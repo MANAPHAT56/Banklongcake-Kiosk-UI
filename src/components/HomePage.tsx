@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { XCircle } from "lucide-react";
 import { HeroBanner } from "./HeroBanner";
 import { FloatingDecorations } from "./FloatingDecorations";
@@ -35,6 +35,8 @@ export function HomePage() {
     if (!slots.data?.slots.length) return fallbackProducts;
     return slotsToKioskProducts(slots.data.slots);
   }, [slots.data]);
+  
+  const handledWsMessageRef = useRef<any>(null);
 
   // Derived: show blocking modal when machine is not ACTIVE or not online
   const isMachineUnavailable =
@@ -43,10 +45,13 @@ export function HomePage() {
 
   useEffect(() => {
     if (globalWs.paymentStatus === "SWITCH_TO_KIOSK" && globalWs.lastMessage) {
+      if (handledWsMessageRef.current === globalWs.lastMessage) return;
+      
       const msg = globalWs.lastMessage;
       if (msg.slot_number && msg.transaction_id) {
         const product = products.find((p) => p.slotNumber === msg.slot_number);
         if (product) {
+          handledWsMessageRef.current = globalWs.lastMessage;
           const fakeCheckout: CheckoutResult = {
             transaction_id: msg.transaction_id,
             amount: msg.amount || product.price,
@@ -67,13 +72,17 @@ export function HomePage() {
           pay.startFromCheckout(product, fakeCheckout);
         }
       }
-    } else if (globalWs.paymentStatus === "SUCCEEDED") {
+    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
+      if (handledWsMessageRef.current === globalWs.lastMessage) return;
       if (pay.state !== "success" && pay.state !== "complete") {
+        handledWsMessageRef.current = globalWs.lastMessage;
         setMobileOpen(false);
         pay.simulatePaid();
       }
-    } else if (globalWs.paymentStatus === "CANCELLED") {
+    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
+      if (handledWsMessageRef.current === globalWs.lastMessage) return;
       if (pay.product && pay.state === "waiting") {
+        handledWsMessageRef.current = globalWs.lastMessage;
         pay.cancel();
       }
     }
