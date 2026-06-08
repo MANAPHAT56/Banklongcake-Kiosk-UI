@@ -157,6 +157,7 @@ export function HomePage() {
         products={products}
         onClose={() => setMobileOpen(false)}
         onPayAtKiosk={(product, checkout) => {
+          setMobileOpen(false);
           pay.startFromCheckout(product, checkout);
         }}
         onMobilePaid={(product, checkout) => {
