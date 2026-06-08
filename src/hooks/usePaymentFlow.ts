@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product } from "@/data/products";
 import type { PayState } from "@/components/QrPaymentModal";
-import { createCheckout, cancelSessionKioskSwitch } from "@/lib/api/client";
+import { createCheckout, cancelSessionKioskSwitch, payCheckoutForKiosk } from "@/lib/api/client";
 import type { CheckoutResult } from "@/types/kiosk";
 import { usePaymentWebSocket } from "./usePaymentWebSocket";
 import { th } from "@/i18n/th";
@@ -61,13 +61,39 @@ export function usePaymentFlow(machineUuid: string | null) {
     }
   }, [machineUuid]);
 
-  const startFromCheckout = useCallback((p: Product, result: CheckoutResult) => {
+  const startFromCheckout = useCallback(async (p: Product, result: CheckoutResult) => {
     requestRef.current += 1;
+    const requestId = requestRef.current;
+    
     setError(null);
-    setStarting(false);
     setProduct(p);
+    
+    // If we already have promptpay (e.g. from standard createCheckout), just set it
+    if (result.promptpay?.image_url_png || result.promptpay?.image_url_svg) {
+      setStarting(false);
+      setCheckout(result);
+      setState("waiting");
+      return;
+    }
+
+    // Otherwise we need to fetch the payment intent via kiosk
+    setStarting(true);
     setCheckout(result);
     setState("waiting");
+    
+    try {
+      const payResult = await payCheckoutForKiosk(result.transaction_id);
+      if (requestRef.current !== requestId) return;
+      
+      setCheckout({ ...result, ...payResult });
+    } catch (err) {
+      if (requestRef.current !== requestId) return;
+      setError(err instanceof Error ? err.message : th.createPaymentFailed);
+    } finally {
+      if (requestRef.current === requestId) {
+        setStarting(false);
+      }
+    }
   }, []);
 
   const simulatePaid = useCallback(() => setState("success"), []);

@@ -78,6 +78,16 @@ export function createMobileSession(machineUuid: string, slotNumber: number) {
   });
 }
 
+export function fetchTransactionState(transactionId: number) {
+  return request<{ state: any }>(`/api/checkout/transactions/${encodeURIComponent(String(transactionId))}/state`);
+}
+
+export function payCheckoutForKiosk(transactionId: number) {
+  return request<CheckoutResult>(`/api/checkout/transactions/${encodeURIComponent(String(transactionId))}/pay`, {
+    method: "POST",
+  });
+}
+
 export function searchUnregisteredMachines(search: string) {
   const query = new URLSearchParams({
     limit: "20",
@@ -122,32 +132,4 @@ export function kioskLogin(machineUuid: string, kioskSecret: string) {
       kioskSecret,
     }),
   });
-}
-
-export function simulateMobileSwitchToKiosk(transactionId: number) {
-  return request<{ delivered: boolean }>(
-    `/api/mobile/${encodeURIComponent(String(transactionId))}/switch-to-kiosk`,
-    { method: "POST" },
-  );
-}
-
-export function simulateMobilePaySuccess(transactionId: number) {
-  return request<unknown>(
-    `/api/mobile/${encodeURIComponent(String(transactionId))}/pay-success`,
-    { method: "POST" },
-  );
-}
-
-export function invalidateMobileSession(sessionId: string) {
-  return request<{ delivered: boolean }>(
-    `/api/mobile/sessions/${encodeURIComponent(sessionId)}/invalidate`,
-    { method: "POST" },
-  );
-}
-
-export function cancelSessionKioskSwitch(sessionId: string) {
-  return request<{ delivered: boolean }>(
-    `/api/mobile/sessions/${encodeURIComponent(sessionId)}/cancel-switch-to-kiosk`,
-    { method: "POST" },
-  );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { getPaymentWebSocketUrl } from "@/lib/api/client";
+import { fetchTransactionState, getPaymentWebSocketUrl } from "@/lib/api/client";
 import { th } from "@/i18n/th";
 
-const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
+const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "INVALIDATED"]);
 
 export function usePaymentWebSocket(
   machineUuid: string | null | undefined,
@@ -22,6 +22,27 @@ export function usePaymentWebSocket(
     }
 
     let closed = false;
+
+    // Pull recovery state on start or reconnect
+    if (transactionId) {
+      fetchTransactionState(transactionId)
+        .then((res) => {
+          if (closed) return;
+          const state = res.state;
+          if (state) {
+            // Update local status based on current authoritative state if it indicates a terminal or handled state
+            if (state.paymentChannel === 'kiosk' && state.checkoutOwner === 'kiosk') {
+               setPaymentStatus("SWITCH_TO_KIOSK");
+            } else if (state.status === "SUCCEEDED" || state.status === "FAILED") {
+               setPaymentStatus(state.status);
+            }
+          }
+        })
+        .catch(() => {
+          // Silent catch, let WS handle real time
+        });
+    }
+
     const ws = new WebSocket(getPaymentWebSocketUrl());
     wsRef.current = ws;
 
@@ -59,18 +80,12 @@ export function usePaymentWebSocket(
         return;
       }
 
-      // If we are tracking a specific transaction, we should filter events for it,
-      // EXCEPT when we don't have a transactionId yet (e.g., listening for external mobile payments).
       const isTargetTransaction = !transactionId || message.transaction_id === transactionId;
-
-      if (!isTargetTransaction) {
-         // Optionally handle cross-transaction logic, but for now ignore if it doesn't match our active local transaction
-         // Actually, if it's a success, we might want to know even if it's not ours!
-      }
 
       if (
         (message.type === "mobile.switch_to_kiosk" ||
-          message.type === "CHECKOUT_TRANSFERRED_TO_KIOSK") &&
+          message.type === "CHECKOUT_TRANSFERRED_TO_KIOSK" ||
+          message.type === "SHOW_KIOSK_QR") &&
         isTargetTransaction
       ) {
         setPaymentStatus("SWITCH_TO_KIOSK");
@@ -80,6 +95,12 @@ export function usePaymentWebSocket(
 
       if (message.type === "KIOSK_SWITCH_CANCELLED" && isTargetTransaction) {
         setPaymentStatus("CANCELLED");
+        setConnectionError(null);
+        return;
+      }
+
+      if (message.type === "SESSION_INVALIDATED" && isTargetTransaction) {
+        setPaymentStatus("INVALIDATED");
         setConnectionError(null);
         return;
       }
@@ -117,7 +138,7 @@ export function usePaymentWebSocket(
       }
       wsRef.current = null;
     };
-  }, [transactionId, enabled]);
+  }, [transactionId, enabled, machineUuid]);
 
   return { paymentStatus, connectionError, lastMessage };
 }
