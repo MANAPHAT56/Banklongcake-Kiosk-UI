@@ -24,6 +24,7 @@ export function usePaymentWebSocket(
 
     let closed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null; // 🆕 เพิ่มตัวจับเวลา Heartbeat
     let reconnectDelay = 2000;
 
     function connect() {
@@ -53,6 +54,18 @@ export function usePaymentWebSocket(
       }
     }
 
+    // 🆕 ฟังก์ชันเริ่มส่ง Ping เพื่อรักษาและตรวจสอบสถานะการเชื่อมต่อ
+    function startHeartbeat(ws: WebSocket) {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      
+      heartbeatTimer = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          // ส่ง action "ping" ไปหา server (ปรับเปลี่ยน payload ตามที่ backend รองรับได้เลย)
+          ws.send(JSON.stringify({ action: "ping" }));
+        }
+      }, 30000); // ส่งทุกๆ 30 วินาที
+    }
+
     function initWs() {
       if (closed) return;
 
@@ -68,6 +81,8 @@ export function usePaymentWebSocket(
       ws.onopen = () => {
         if (closed) return;
         setConnectionError(null);
+        
+        // 1. ส่งข้อมูล subscribe ปกติ
         ws.send(
           JSON.stringify({
             action: "subscribe",
@@ -75,6 +90,9 @@ export function usePaymentWebSocket(
             transaction_id: transactionId,
           }),
         );
+
+        // 2. 🆕 เริ่มระบบส่ง Heartbeat ทันทีที่ต่อติด
+        startHeartbeat(ws);
       };
 
       ws.onmessage = (event) => {
@@ -93,6 +111,9 @@ export function usePaymentWebSocket(
         } catch {
           return;
         }
+
+        // ถ้า server มีการตอบกลับ pong หรือยอมรับข้อความ ping สามารถดักข้ามตรงนี้ได้เลย
+        if (message.type === "pong") return;
 
         if (message.version != null) {
           if (message.version <= latestVersionRef.current) return;
@@ -161,6 +182,8 @@ export function usePaymentWebSocket(
 
       ws.onclose = () => {
         wsRef.current = null;
+        if (heartbeatTimer) clearInterval(heartbeatTimer); // 🆕 ล้างไทเมอร์เมื่อหลุด
+        
         if (!closed) {
           reconnectTimer = setTimeout(() => {
             reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
@@ -175,6 +198,7 @@ export function usePaymentWebSocket(
     return () => {
       closed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer); // 🆕 เคลียร์ไทเมอร์ตอน unmount คอมโพเนนต์
       if (
         wsRef.current &&
         (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)
