@@ -85,7 +85,12 @@ export function usePaymentFlow(machineUuid: string | null) {
       const payResult = await payCheckoutForKiosk(result.transaction_id);
       if (requestRef.current !== requestId) return;
       
-      setCheckout({ ...result, ...payResult });
+      // 💡 ป้องกันข้อมูลสินค้าเก่าโดนทับ
+      setCheckout({ 
+        ...result, 
+        ...payResult,
+        product: payResult.product ?? result.product 
+      });
     } catch (err) {
       if (requestRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : th.createPaymentFailed);
@@ -106,7 +111,16 @@ export function usePaymentFlow(machineUuid: string | null) {
       setError(null);
       try {
         const payResult = await payCheckoutForKiosk(checkout.transaction_id);
-        setCheckout((prev) => (prev ? { ...prev, ...payResult } : payResult));
+        
+        // 💡 ป้องกันคิวอาร์ใหม่ไปดึงข้อมูลสินค้าอื่นมาทับของเดิม
+        setCheckout((prev) => {
+          if (!prev) return payResult;
+          return {
+            ...prev,
+            ...payResult,
+            product: payResult.product ?? prev.product
+          };
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : th.createPaymentFailed);
       } finally {
