@@ -133,3 +133,9 @@ export function kioskLogin(machineUuid: string, kioskSecret: string) {
     }),
   });
 }
+
+export function cancelSessionKioskSwitch(sessionId: string) {
+  return request<{ success: boolean }>(`/api/mobile/sessions/${encodeURIComponent(sessionId)}/cancel`, {
+    method: "POST",
+  });
+}

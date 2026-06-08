@@ -71,7 +71,7 @@ export function HomePage() {
           };
           setMobileOpen(false);
           pay.startFromCheckout(product, fakeCheckout);
-          pay.refresh(); // ดึง QR ทันที
+          // เอา pay.refresh() ออก เนื่องจาก startFromCheckout จะดึงข้อมูล QR ให้อัตโนมัติแล้ว
         }
       }
     } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {

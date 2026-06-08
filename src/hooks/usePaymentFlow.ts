@@ -97,11 +97,25 @@ export function usePaymentFlow(machineUuid: string | null) {
   }, []);
 
   const simulatePaid = useCallback(() => setState("success"), []);
-  const refresh = useCallback(() => {
-    if (product) {
+
+  const refresh = useCallback(async () => {
+    if (!product) return;
+
+    if (checkout?.transaction_id) {
+      setStarting(true);
+      setError(null);
+      try {
+        const payResult = await payCheckoutForKiosk(checkout.transaction_id);
+        setCheckout((prev) => (prev ? { ...prev, ...payResult } : payResult));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : th.createPaymentFailed);
+      } finally {
+        setStarting(false);
+      }
+    } else {
       void start(product);
     }
-  }, [product, start]);
+  }, [product, checkout, start]);
 
   useEffect(() => {
     if (paymentStatus === "SUCCEEDED") {
