@@ -93,7 +93,7 @@ export function usePaymentWebSocket(
         return;
       }
 
-      if (message.type === "KIOSK_SWITCH_CANCELLED" && isTargetTransaction) {
+      if ((message.type === "KIOSK_SWITCH_CANCELLED" || message.type === "CART_UPDATED") && isTargetTransaction) {
         setPaymentStatus("CANCELLED");
         setConnectionError(null);
         return;
