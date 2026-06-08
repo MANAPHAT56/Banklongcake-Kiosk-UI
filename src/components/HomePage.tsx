@@ -26,17 +26,18 @@ export function HomePage() {
   const [storedKioskSecret] = useState(() => getKioskSecret());
   const [authState, setAuthState] = useState<"checking" | "ready" | "register">("checking");
   const [authError, setAuthError] = useState<string | null>(null);
+  const handledWsMessageRef = useRef<unknown>(null);
+
   const machineUuid = envMachineUuid ?? registeredMachineUuid;
   const activeMachineUuid = authState === "ready" ? machineUuid : null;
   const slots = useMachineSlots(activeMachineUuid);
   const pay = usePaymentFlow(activeMachineUuid);
   const globalWs = usePaymentWebSocket(activeMachineUuid, null, Boolean(activeMachineUuid));
+
   const products = useMemo<Product[]>(() => {
     if (!slots.data?.slots.length) return fallbackProducts;
     return slotsToKioskProducts(slots.data.slots);
   }, [slots.data]);
-  
-  const handledWsMessageRef = useRef<any>(null);
 
   // Derived: show blocking modal when machine is not ACTIVE or not online
   const isMachineUnavailable =
@@ -44,14 +45,40 @@ export function HomePage() {
     (slots.data.machine.status !== "ACTIVE" || !slots.data.machine.is_online);
 
   useEffect(() => {
-    if (globalWs.paymentStatus === "SWITCH_TO_KIOSK" && globalWs.lastMessage) {
-      if (handledWsMessageRef.current === globalWs.lastMessage) return;
-      
-      const msg = globalWs.lastMessage;
+    if (!globalWs.lastMessage) return;
+    const msg = globalWs.lastMessage;
+    if (handledWsMessageRef.current === msg) return;
+
+    if (msg.type === "SHOW_KIOSK_QR") {
       if (msg.slot_number && msg.transaction_id) {
         const product = products.find((p) => p.slotNumber === msg.slot_number);
         if (product) {
-          handledWsMessageRef.current = globalWs.lastMessage;
+          handledWsMessageRef.current = msg;
+          const fakeCheckout: CheckoutResult = {
+            transaction_id: msg.transaction_id,
+            amount: msg.amount || product.price,
+            session_id: msg.session_id ?? null,
+            currency: "THB",
+            payment_status: "pending",
+            promptpay: null, // QR ยังไม่มา modal จะแสดง spinner ก่อน
+            payment_intent_id: undefined,
+            product: {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              image_url: product.imageUrl,
+            },
+          };
+          setMobileOpen(false);
+          pay.startFromCheckout(product, fakeCheckout);
+          pay.refresh(); // ดึง QR ทันที
+        }
+      }
+    } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
+      if (msg.slot_number && msg.transaction_id) {
+        const product = products.find((p) => p.slotNumber === msg.slot_number);
+        if (product) {
+          handledWsMessageRef.current = msg;
           const fakeCheckout: CheckoutResult = {
             transaction_id: msg.transaction_id,
             amount: msg.amount || product.price,
@@ -67,22 +94,19 @@ export function HomePage() {
               image_url: product.imageUrl,
             },
           };
-
           setMobileOpen(false);
           pay.startFromCheckout(product, fakeCheckout);
         }
       }
-    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
-      if (handledWsMessageRef.current === globalWs.lastMessage) return;
+    } else if (globalWs.paymentStatus === "SUCCEEDED") {
       if (pay.state !== "success" && pay.state !== "complete") {
-        handledWsMessageRef.current = globalWs.lastMessage;
+        handledWsMessageRef.current = msg;
         setMobileOpen(false);
         pay.simulatePaid();
       }
-    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
-      if (handledWsMessageRef.current === globalWs.lastMessage) return;
+    } else if (globalWs.paymentStatus === "CANCELLED") {
       if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = globalWs.lastMessage;
+        handledWsMessageRef.current = msg;
         pay.cancel();
       }
     }
