@@ -3,9 +3,13 @@ import type { Product } from "@/data/products";
 import type { PayState } from "@/components/QrPaymentModal";
 import { createCheckout, cancelSessionKioskSwitch, payCheckoutForKiosk } from "@/lib/api/client";
 import type { CheckoutResult } from "@/types/kiosk";
-import { usePaymentWebSocket } from "./usePaymentWebSocket";
 import { th } from "@/i18n/th";
 import { useWs } from "@/components/WsContext";
+
+function isSameTransaction(messageTransactionId: unknown, checkoutTransactionId: number) {
+  return Number(messageTransactionId) === Number(checkoutTransactionId);
+}
+
 export function usePaymentFlow(machineUuid: string | null) {
   const [product, setProduct] = useState<Product | null>(null);
   const [state, setState] = useState<PayState>("waiting");
@@ -14,7 +18,7 @@ export function usePaymentFlow(machineUuid: string | null) {
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
-const paymentStatus = !checkout?.transaction_id || lastMessage?.transaction_id === checkout.transaction_id
+const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)
   ? rawStatus
   : null;
 
@@ -164,7 +168,14 @@ useEffect(() => {
     const timer = window.setTimeout(() => cancel(), 10000);
     return () => window.clearTimeout(timer);
   }, [state, product, cancel]);
-
+const reset = useCallback(() => {
+  requestRef.current += 1;
+  setProduct(null);
+  setCheckout(null);
+  setState("waiting");
+  setError(null);
+  setStarting(false);
+}, []);
   return {
     product,
     state,
@@ -173,6 +184,7 @@ useEffect(() => {
     error,
     connectionError,
     start,
+    reset,
     startFromCheckout,
     cancel,
     refresh,
