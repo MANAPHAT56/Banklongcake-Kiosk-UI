@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchTransactionState, getPaymentWebSocketUrl } from "@/lib/api/client";
 import { th } from "@/i18n/th";
 
-const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "INVALIDATED"]);
+const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "INVALIDATED", "KIOSK_SWITCH_CANCELLED"]);
 
 export function usePaymentWebSocket(
   machineUuid: string | null | undefined,
@@ -43,7 +43,7 @@ export function usePaymentWebSocket(
               // Update local status based on current authoritative state if it indicates a terminal or handled state
               if (state.paymentChannel === 'kiosk' && state.status === 'awaiting_payment') {
                 setPaymentStatus("SWITCH_TO_KIOSK");
-              } else if (state.status === "SUCCEEDED" || state.status === "FAILED") {
+              } else if (state.status === "SUCCEEDED" || state.status === "FAILED" || state.status === "KIOSK_SWITCH_CANCELLED") {
                 setPaymentStatus(state.status);
               }
             }
