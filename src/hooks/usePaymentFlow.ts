@@ -103,6 +103,15 @@ export function usePaymentFlow(machineUuid: string | null) {
 
   const simulatePaid = useCallback(() => setState("success"), []);
 
+  const showSuccess = useCallback((p: Product, result: CheckoutResult) => {
+    requestRef.current += 1;
+    setError(null);
+    setProduct(p);
+    setCheckout(result);
+    setState("success");
+    setStarting(false);
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!product) return;
 
@@ -160,5 +169,6 @@ export function usePaymentFlow(machineUuid: string | null) {
     cancel,
     refresh,
     simulatePaid,
+    showSuccess,
   };
 }

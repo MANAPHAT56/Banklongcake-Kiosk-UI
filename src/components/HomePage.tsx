@@ -98,15 +98,43 @@ export function HomePage() {
           pay.startFromCheckout(product, fakeCheckout);
         }
       }
-    } else if (globalWs.paymentStatus === "SUCCEEDED") {
+    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
+      if (handledWsMessageRef.current === globalWs.lastMessage) return;
       if (pay.state !== "success" && pay.state !== "complete") {
-        handledWsMessageRef.current = msg;
+        handledWsMessageRef.current = globalWs.lastMessage;
+        
+        const msg = globalWs.lastMessage;
+        if (!pay.product && msg.slot_number) {
+           const product = products.find(p => p.slotNumber === msg.slot_number);
+           if (product) {
+              const fakeCheckout: CheckoutResult = {
+                transaction_id: msg.transaction_id,
+                amount: msg.amount || product.price,
+                session_id: msg.session_id,
+                currency: "THB",
+                payment_status: "succeeded",
+                promptpay: msg.promptpay || null,
+                payment_intent_id: msg.payment_intent_id || undefined,
+                product: {
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  image_url: product.imageUrl,
+                },
+              };
+              pay.showSuccess(product, fakeCheckout);
+           } else {
+             pay.simulatePaid();
+           }
+        } else {
+           pay.simulatePaid();
+        }
+        
         setMobileOpen(false);
-        pay.simulatePaid();
       }
-    } else if (globalWs.paymentStatus === "CANCELLED") {
+    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
       if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = msg;
+        handledWsMessageRef.current = globalWs.lastMessage;
         pay.cancel();
       }
     }
