@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchMachineSlots } from "@/lib/api/client";
-import type { MachineSlotsResponse } from "@/types/kiosk";
+import type { MachineSlotsResponse } from "@/types/api";
 
 const REFRESH_MS = Number.parseInt(import.meta.env.VITE_REFRESH_MS ?? "30000", 10);
 
-export function useMachineSlots(machineUuid: string | null) {
+export function useMachineSlots(machineUuid: string) {
   const [data, setData] = useState<MachineSlotsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      if (!machineUuid) {
-        setData(null);
-        setLoading(false);
-        return;
-      }
-
       setError(null);
       const result = await fetchMachineSlots(machineUuid);
       setData(result);
@@ -28,13 +22,6 @@ export function useMachineSlots(machineUuid: string | null) {
   }, [machineUuid]);
 
   useEffect(() => {
-    if (!machineUuid) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return undefined;
-    }
-
     setLoading(true);
     load();
     const timer = setInterval(load, REFRESH_MS);

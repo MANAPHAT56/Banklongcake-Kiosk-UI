@@ -9,38 +9,130 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LocationsRouteImport } from './routes/locations'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LocationsIndexRouteImport } from './routes/locations.index'
+import { Route as CakesIndexRouteImport } from './routes/cakes.index'
+import { Route as LocationsMachineUuidRouteImport } from './routes/locations.$machineUuid'
+import { Route as CakesIdRouteImport } from './routes/cakes.$id'
 
+const LocationsRoute = LocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LocationsIndexRoute = LocationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LocationsRoute,
+} as any)
+const CakesIndexRoute = CakesIndexRouteImport.update({
+  id: '/cakes/',
+  path: '/cakes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsMachineUuidRoute = LocationsMachineUuidRouteImport.update({
+  id: '/$machineUuid',
+  path: '/$machineUuid',
+  getParentRoute: () => LocationsRoute,
+} as any)
+const CakesIdRoute = CakesIdRouteImport.update({
+  id: '/cakes/$id',
+  path: '/cakes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/locations': typeof LocationsRouteWithChildren
+  '/cakes/$id': typeof CakesIdRoute
+  '/locations/$machineUuid': typeof LocationsMachineUuidRoute
+  '/cakes/': typeof CakesIndexRoute
+  '/locations/': typeof LocationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cakes/$id': typeof CakesIdRoute
+  '/locations/$machineUuid': typeof LocationsMachineUuidRoute
+  '/cakes': typeof CakesIndexRoute
+  '/locations': typeof LocationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/locations': typeof LocationsRouteWithChildren
+  '/cakes/$id': typeof CakesIdRoute
+  '/locations/$machineUuid': typeof LocationsMachineUuidRoute
+  '/cakes/': typeof CakesIndexRoute
+  '/locations/': typeof LocationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/locations'
+    | '/cakes/$id'
+    | '/locations/$machineUuid'
+    | '/cakes/'
+    | '/locations/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/cakes/$id'
+    | '/locations/$machineUuid'
+    | '/cakes'
+    | '/locations'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/locations'
+    | '/cakes/$id'
+    | '/locations/$machineUuid'
+    | '/cakes/'
+    | '/locations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  LocationsRoute: typeof LocationsRouteWithChildren
+  CakesIdRoute: typeof CakesIdRoute
+  CakesIndexRoute: typeof CakesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/locations': {
+      id: '/locations'
+      path: '/locations'
+      fullPath: '/locations'
+      preLoaderRoute: typeof LocationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +140,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/locations/': {
+      id: '/locations/'
+      path: '/'
+      fullPath: '/locations/'
+      preLoaderRoute: typeof LocationsIndexRouteImport
+      parentRoute: typeof LocationsRoute
+    }
+    '/cakes/': {
+      id: '/cakes/'
+      path: '/cakes'
+      fullPath: '/cakes/'
+      preLoaderRoute: typeof CakesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations/$machineUuid': {
+      id: '/locations/$machineUuid'
+      path: '/$machineUuid'
+      fullPath: '/locations/$machineUuid'
+      preLoaderRoute: typeof LocationsMachineUuidRouteImport
+      parentRoute: typeof LocationsRoute
+    }
+    '/cakes/$id': {
+      id: '/cakes/$id'
+      path: '/cakes/$id'
+      fullPath: '/cakes/$id'
+      preLoaderRoute: typeof CakesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface LocationsRouteChildren {
+  LocationsMachineUuidRoute: typeof LocationsMachineUuidRoute
+  LocationsIndexRoute: typeof LocationsIndexRoute
+}
+
+const LocationsRouteChildren: LocationsRouteChildren = {
+  LocationsMachineUuidRoute: LocationsMachineUuidRoute,
+  LocationsIndexRoute: LocationsIndexRoute,
+}
+
+const LocationsRouteWithChildren = LocationsRoute._addFileChildren(
+  LocationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  LocationsRoute: LocationsRouteWithChildren,
+  CakesIdRoute: CakesIdRoute,
+  CakesIndexRoute: CakesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
