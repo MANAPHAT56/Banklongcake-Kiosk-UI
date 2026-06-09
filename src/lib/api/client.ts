@@ -97,6 +97,37 @@ export function mockPayCheckoutForKiosk(transactionId: number) {
   );
 }
 
+export function fetchMachines(params: {
+  search?: string;
+  limit?: number;
+  registration_status?: "REGISTERED" | "UNREGISTERED";
+  registrationStatus?: "REGISTERED" | "UNREGISTERED";
+  status?: string;
+  connection_status?: string;
+  connectionStatus?: string;
+} = {}) {
+  const query = new URLSearchParams({
+    limit: String(params.limit ?? 100),
+    sortBy: "name",
+    sortOrder: "asc",
+  });
+
+  const search = params.search?.trim();
+  if (search) query.set("search", search);
+
+  const registrationStatus = params.registrationStatus ?? params.registration_status;
+  if (registrationStatus) query.set("registration_status", registrationStatus);
+
+  if (params.status) query.set("status", params.status);
+
+  const connectionStatus = params.connectionStatus ?? params.connection_status;
+  if (connectionStatus) query.set("connection_status", connectionStatus);
+
+  return request<MachinesListResponse>(`/api/customer/machines?${query.toString()}`).then(
+    (result) => (result.machines ?? result.data ?? []) as MachineRegistrationCandidate[],
+  );
+}
+
 export function searchUnregisteredMachines(search: string) {
   const query = new URLSearchParams({
     limit: "20",
