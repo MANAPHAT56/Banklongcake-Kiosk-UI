@@ -83,7 +83,6 @@ export function QrPaymentModal({
             {/* ปุ่มกากบาทที่เพิ่ม onCancel เข้าไปร่วมกับ onClose */}
             <button
               onClick={() => {
-                onCancel();
                 onClose();
               }}
               aria-label={th.closePayment}
@@ -157,15 +156,6 @@ export function QrPaymentModal({
                         {error ?? connectionError}
                       </p>
                     )}
-
-                    <div className="mt-5 flex gap-3">
-                      <ActionButton onClick={onRefresh} icon={<RefreshCw size={18} />}>
-                        {th.regenerateQr}
-                      </ActionButton>
-                      <ActionButton onClick={onCancel} variant="ghost">
-                        {th.cancelOrder}
-                      </ActionButton>
-                    </div>
                   </motion.div>
                 )}
 
