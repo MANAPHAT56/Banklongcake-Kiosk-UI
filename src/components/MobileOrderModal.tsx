@@ -170,9 +170,6 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
                 </span>
               </div>
 
-              <p className="mt-2 text-xs font-semibold text-destructive/80">
-                เพื่อความสะดวก กรุณาไม่ปิดหน้านี้ จนกว่าจะจัดการสั่งซื้อเสร็จค่ะ
-              </p>
 
               {(error || connectionError) && (
                 <p className="max-w-md text-sm font-semibold text-destructive">
