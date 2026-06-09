@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product } from "@/data/products";
 import type { PayState } from "@/components/QrPaymentModal";
-import { createCheckout, cancelSessionKioskSwitch, payCheckoutForKiosk } from "@/lib/api/client";
+import {
+  createCheckout,
+  cancelSessionKioskSwitch,
+  fetchTransactionState,
+  payCheckoutForKiosk,
+} from "@/lib/api/client";
 import type { CheckoutResult } from "@/types/kiosk";
 import { th } from "@/i18n/th";
 import { useWs } from "@/components/WsContext";
 
+const PAYMENT_STATUS_POLL_MS = Math.max(
+  1000,
+  Number.parseInt(import.meta.env.VITE_PAYMENT_STATUS_POLL_MS ?? "3000", 10),
+);
+
 function isSameTransaction(messageTransactionId: unknown, checkoutTransactionId: number) {
   return Number(messageTransactionId) === Number(checkoutTransactionId);
+}
+
+function normalizePaymentStatus(status: string | null | undefined) {
+  if (!status) return null;
+  const normalized = status.toUpperCase();
+  if (normalized === "SUCCEEDED" || normalized === "SUCCESS" || normalized === "PAID") return "SUCCEEDED";
+  if (normalized === "FAILED" || normalized === "PAYMENT_FAILED") return "FAILED";
+  if (normalized === "CANCELED") return "CANCELLED";
+  return normalized;
 }
 
 export function usePaymentFlow(machineUuid: string | null) {
@@ -162,6 +181,64 @@ useEffect(() => {
     setStarting(false);
   }
 }, [paymentStatus, cancel]);
+
+  useEffect(() => {
+    if (!checkout?.transaction_id || state !== "waiting") return;
+
+    let stopped = false;
+    const transactionId = checkout.transaction_id;
+
+    const syncTransactionState = async () => {
+      try {
+        const result = await fetchTransactionState(transactionId);
+        if (stopped) return;
+
+        const status = normalizePaymentStatus(result.state?.status ?? result.state?.payment_status);
+
+        if (status === "SUCCEEDED") {
+          setState("success");
+          setError(null);
+          return;
+        }
+
+        if (status === "FAILED" || status === "CANCELLED") {
+          setError(th.paymentNotCompleted);
+          cancel();
+          return;
+        }
+
+        if (status === "KIOSK_SWITCH_CANCELLED") {
+          requestRef.current += 1;
+          setProduct(null);
+          setCheckout(null);
+          setState("waiting");
+          setError(null);
+          setStarting(false);
+        }
+      } catch {
+        // WebSocket remains the primary path; polling is only recovery when WS misses an event.
+      }
+    };
+
+    void syncTransactionState();
+    const interval = window.setInterval(syncTransactionState, PAYMENT_STATUS_POLL_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void syncTransactionState();
+      }
+    };
+
+    window.addEventListener("focus", syncTransactionState);
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", syncTransactionState);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [checkout?.transaction_id, state, cancel]);
 
   useEffect(() => {
     if (!product || state !== "success") return;
