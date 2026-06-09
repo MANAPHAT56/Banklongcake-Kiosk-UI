@@ -4,7 +4,7 @@ import { X, Smartphone, Wifi, QrCode, Loader2 } from "lucide-react";
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
 import { createMobileSession, invalidateMobileSession } from "@/lib/api/client";
-import { usePaymentWebSocket } from "@/hooks/usePaymentWebSocket";
+import { useWs } from "./WsContext";
 import { th } from "@/i18n/th";
 
 type Props = {
@@ -32,11 +32,10 @@ export function MobileOrderModal({
   const handledStatusRef = useRef<string | null>(null);
   const hasRequestedRef = useRef<boolean>(false);
   const transactionId = checkout?.transaction_id;
-  const { paymentStatus, connectionError } = usePaymentWebSocket(
-    machineUuid,
-    transactionId,
-    Boolean(open && machineUuid)
-  );
+const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
+const paymentStatus = !transactionId || lastMessage?.transaction_id === transactionId
+  ? rawStatus
+  : null;
 
   useEffect(() => {
     if (!open) {

@@ -5,7 +5,7 @@ import { createCheckout, cancelSessionKioskSwitch, payCheckoutForKiosk } from "@
 import type { CheckoutResult } from "@/types/kiosk";
 import { usePaymentWebSocket } from "./usePaymentWebSocket";
 import { th } from "@/i18n/th";
-
+import { useWs } from "@/components/WsContext";
 export function usePaymentFlow(machineUuid: string | null) {
   const [product, setProduct] = useState<Product | null>(null);
   const [state, setState] = useState<PayState>("waiting");
@@ -13,11 +13,10 @@ export function usePaymentFlow(machineUuid: string | null) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
-  const { paymentStatus, connectionError } = usePaymentWebSocket(
-    machineUuid,
-    checkout?.transaction_id,
-    Boolean(machineUuid && product && state === "waiting"),
-  );
+const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
+const paymentStatus = !checkout?.transaction_id || lastMessage?.transaction_id === checkout.transaction_id
+  ? rawStatus
+  : null;
 
   const cancel = useCallback(() => {
     requestRef.current += 1;

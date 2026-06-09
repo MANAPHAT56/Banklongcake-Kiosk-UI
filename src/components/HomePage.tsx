@@ -16,7 +16,7 @@ import { kioskLogin } from "@/lib/api/client";
 import { usePaymentWebSocket } from "@/hooks/usePaymentWebSocket";
 import type { CheckoutResult } from "@/types/kiosk";
 import { th } from "@/i18n/th";
-
+import {WsProvider, useWs} from "./WsContext";
 const envMachineUuid = import.meta.env.VITE_MACHINE_UUID?.trim() || null;
 
 export function HomePage() {
@@ -32,7 +32,7 @@ export function HomePage() {
   const activeMachineUuid = authState === "ready" ? machineUuid : null;
   const slots = useMachineSlots(activeMachineUuid);
   const pay = usePaymentFlow(activeMachineUuid);
-  const globalWs = usePaymentWebSocket(activeMachineUuid, null, Boolean(activeMachineUuid));
+  const globalWs = useWs();
 
   const products = useMemo<Product[]>(() => {
     if (!slots.data?.slots.length) return fallbackProducts;
@@ -187,6 +187,7 @@ export function HomePage() {
   }
 
   return (
+     <WsProvider machineUuid={activeMachineUuid}>
     <main className="relative flex h-screen w-screen max-w-[100vw] flex-col overflow-hidden">
       <FloatingDecorations />
       <HeroBanner onMobileOrder={() => setMobileOpen(true)} />
@@ -268,5 +269,6 @@ export function HomePage() {
         </div>
       )}
     </main>
+    </WsProvider>
   );
 }
