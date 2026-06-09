@@ -140,16 +140,25 @@ export function usePaymentFlow(machineUuid: string | null) {
     }
   }, [product, checkout, start]);
 
-  useEffect(() => {
-    if (paymentStatus === "SUCCEEDED") {
-      setState("success");
-    }
+useEffect(() => {
+  if (paymentStatus === "SUCCEEDED") {
+    setState("success");
+  }
 
-    if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
-      setError(th.paymentNotCompleted);
-      cancel();
-    }
-  }, [paymentStatus, cancel]);
+  if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
+    setError(th.paymentNotCompleted);
+    cancel();
+  }
+
+  if (paymentStatus === "KIOSK_SWITCH_CANCELLED") {
+    requestRef.current += 1;
+    setProduct(null);
+    setCheckout(null);
+    setState("waiting");
+    setError(null);
+    setStarting(false);
+  }
+}, [paymentStatus, cancel]);
 
   useEffect(() => {
     if (!product || state !== "success") return;

@@ -141,10 +141,10 @@ export function usePaymentWebSocket(
         }
 
         if (message.type === "KIOSK_SWITCH_CANCELLED" && isTargetTransaction) {
-          setPaymentStatus("CANCELLED");
-          setConnectionError(null);
-          return;
-        }
+  setPaymentStatus("KIOSK_SWITCH_CANCELLED"); // เดิมเป็น "CANCELLED"
+  setConnectionError(null);
+  return;
+}
 
         if (message.type === "CART_UPDATED" && isTargetTransaction) {
           setPaymentStatus("CART_UPDATED");
