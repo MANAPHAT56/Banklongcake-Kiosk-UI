@@ -259,6 +259,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         error={pay.error}
         connectionError={pay.connectionError}
         onClose={() => {
+              pay.reset(); // 🆕 clear product/checkout ออก ทำให้ modal ปิด
           setMobileOpen(false);
         }}
         onCancel={pay.cancel}
