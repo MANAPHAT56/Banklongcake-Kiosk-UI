@@ -17,6 +17,10 @@ type Props = {
   onMobilePaid: (product: Product, checkout: CheckoutResult) => void;
 };
 
+function isSameTransaction(messageTransactionId: unknown, checkoutTransactionId: number) {
+  return Number(messageTransactionId) === Number(checkoutTransactionId);
+}
+
 export function MobileOrderModal({
   open,
   machineUuid,
@@ -33,7 +37,7 @@ export function MobileOrderModal({
   const hasRequestedRef = useRef<boolean>(false);
   const transactionId = checkout?.transaction_id;
 const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
-const paymentStatus = !transactionId || lastMessage?.transaction_id === transactionId
+const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transaction_id, transactionId)
   ? rawStatus
   : null;
 
