@@ -259,7 +259,6 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         error={pay.error}
         connectionError={pay.connectionError}
         onClose={() => {
-          pay.cancel();
           setMobileOpen(false);
         }}
         onCancel={pay.cancel}
