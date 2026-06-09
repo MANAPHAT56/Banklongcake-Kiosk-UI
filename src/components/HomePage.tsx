@@ -13,134 +13,20 @@ import { usePaymentFlow } from "@/hooks/usePaymentFlow";
 import { getKioskSecret, getMachineId } from "@/lib/device";
 import { slotsToKioskProducts } from "@/lib/slots";
 import { kioskLogin } from "@/lib/api/client";
-import { usePaymentWebSocket } from "@/hooks/usePaymentWebSocket";
 import type { CheckoutResult } from "@/types/kiosk";
 import { th } from "@/i18n/th";
-import {WsProvider, useWs} from "./WsContext";
+import { WsProvider, useWs } from "./WsContext";
+
 const envMachineUuid = import.meta.env.VITE_MACHINE_UUID?.trim() || null;
 
 export function HomePage() {
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [registeredMachineUuid] = useState(() => getMachineId());
   const [storedKioskSecret] = useState(() => getKioskSecret());
   const [authState, setAuthState] = useState<"checking" | "ready" | "register">("checking");
   const [authError, setAuthError] = useState<string | null>(null);
-  const handledWsMessageRef = useRef<unknown>(null);
 
   const machineUuid = envMachineUuid ?? registeredMachineUuid;
   const activeMachineUuid = authState === "ready" ? machineUuid : null;
-  const slots = useMachineSlots(activeMachineUuid);
-  const pay = usePaymentFlow(activeMachineUuid);
-  const globalWs = useWs();
-
-  const products = useMemo<Product[]>(() => {
-    if (!slots.data?.slots.length) return fallbackProducts;
-    return slotsToKioskProducts(slots.data.slots);
-  }, [slots.data]);
-
-  // Derived: show blocking modal when machine is not ACTIVE or not online
-  const isMachineUnavailable =
-    slots.data != null &&
-    (slots.data.machine.status !== "ACTIVE" || !slots.data.machine.is_online);
-
-  useEffect(() => {
-    if (!globalWs.lastMessage) return;
-    const msg = globalWs.lastMessage;
-    if (handledWsMessageRef.current === msg) return;
-
-    if (msg.type === "SHOW_KIOSK_QR") {
-      if (msg.slot_number && msg.transaction_id) {
-        const product = products.find((p) => p.slotNumber === msg.slot_number);
-        if (product) {
-          handledWsMessageRef.current = msg;
-          const fakeCheckout: CheckoutResult = {
-            transaction_id: msg.transaction_id,
-            amount: msg.amount || product.price,
-            session_id: msg.session_id ?? null,
-            currency: "THB",
-            payment_status: "pending",
-            promptpay: null, // QR ยังไม่มา modal จะแสดง spinner ก่อน
-            payment_intent_id: undefined,
-            product: {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              image_url: product.imageUrl,
-            },
-          };
-          setMobileOpen(false);
-          pay.startFromCheckout(product, fakeCheckout);
-          // เอา pay.refresh() ออก เนื่องจาก startFromCheckout จะดึงข้อมูล QR ให้อัตโนมัติแล้ว
-        }
-      }
-    } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
-      if (msg.slot_number && msg.transaction_id) {
-        const product = products.find((p) => p.slotNumber === msg.slot_number);
-        if (product) {
-          handledWsMessageRef.current = msg;
-          const fakeCheckout: CheckoutResult = {
-            transaction_id: msg.transaction_id,
-            amount: msg.amount || product.price,
-            session_id: msg.session_id,
-            currency: "THB",
-            payment_status: "pending",
-            promptpay: msg.promptpay || null,
-            payment_intent_id: msg.payment_intent_id || undefined,
-            product: {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              image_url: product.imageUrl,
-            },
-          };
-          setMobileOpen(false);
-          pay.startFromCheckout(product, fakeCheckout);
-        }
-      }
-    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
-      if (handledWsMessageRef.current === globalWs.lastMessage) return;
-      if (pay.state !== "success" && pay.state !== "complete") {
-        handledWsMessageRef.current = globalWs.lastMessage;
-        
-        const msg = globalWs.lastMessage;
-        if (!pay.product && msg.slot_number) {
-           const product = products.find(p => p.slotNumber === msg.slot_number);
-           if (product) {
-              const fakeCheckout: CheckoutResult = {
-                transaction_id: msg.transaction_id,
-                amount: msg.amount || product.price,
-                session_id: msg.session_id,
-                currency: "THB",
-                payment_status: "succeeded",
-                promptpay: msg.promptpay || null,
-                payment_intent_id: msg.payment_intent_id || undefined,
-                product: {
-                  id: product.id,
-                  name: product.name,
-                  price: product.price,
-                  image_url: product.imageUrl,
-                },
-              };
-              pay.showSuccess(product, fakeCheckout);
-           } else {
-             pay.simulatePaid();
-           }
-        } else {
-           pay.simulatePaid();
-        }
-        
-        setMobileOpen(false);
-      }
-    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
-      if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = globalWs.lastMessage;
-        pay.cancel();
-      }
-    }
-  }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
-
-  const mobileProduct = products.find((p) => p.available) ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -187,7 +73,142 @@ export function HomePage() {
   }
 
   return (
-     <WsProvider machineUuid={activeMachineUuid}>
+    <WsProvider machineUuid={activeMachineUuid}>
+      <HomePageInner
+        machineUuid={machineUuid}
+        activeMachineUuid={activeMachineUuid}
+        authError={authError}
+      />
+    </WsProvider>
+  );
+}
+
+type InnerProps = {
+  machineUuid: string | null;
+  activeMachineUuid: string | null;
+  authError: string | null;
+};
+
+function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps) {
+  const [selected, setSelected] = useState<Product | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const handledWsMessageRef = useRef<unknown>(null);
+
+  const slots = useMachineSlots(activeMachineUuid);
+  const pay = usePaymentFlow(activeMachineUuid);
+  const globalWs = useWs(); // ✅ อยู่ใน WsProvider แล้ว
+
+  const products = useMemo<Product[]>(() => {
+    if (!slots.data?.slots.length) return fallbackProducts;
+    return slotsToKioskProducts(slots.data.slots);
+  }, [slots.data]);
+
+  const isMachineUnavailable =
+    slots.data != null &&
+    (slots.data.machine.status !== "ACTIVE" || !slots.data.machine.is_online);
+
+  useEffect(() => {
+    if (!globalWs.lastMessage) return;
+    const msg = globalWs.lastMessage;
+    if (handledWsMessageRef.current === msg) return;
+
+    if (msg.type === "SHOW_KIOSK_QR") {
+      if (msg.slot_number && msg.transaction_id) {
+        const product = products.find((p) => p.slotNumber === msg.slot_number);
+        if (product) {
+          handledWsMessageRef.current = msg;
+          const fakeCheckout: CheckoutResult = {
+            transaction_id: msg.transaction_id,
+            amount: msg.amount || product.price,
+            session_id: msg.session_id ?? null,
+            currency: "THB",
+            payment_status: "pending",
+            promptpay: null,
+            payment_intent_id: undefined,
+            product: {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              image_url: product.imageUrl,
+            },
+          };
+          setMobileOpen(false);
+          pay.startFromCheckout(product, fakeCheckout);
+        }
+      }
+    } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
+      if (msg.slot_number && msg.transaction_id) {
+        const product = products.find((p) => p.slotNumber === msg.slot_number);
+        if (product) {
+          handledWsMessageRef.current = msg;
+          const fakeCheckout: CheckoutResult = {
+            transaction_id: msg.transaction_id,
+            amount: msg.amount || product.price,
+            session_id: msg.session_id,
+            currency: "THB",
+            payment_status: "pending",
+            promptpay: msg.promptpay || null,
+            payment_intent_id: msg.payment_intent_id || undefined,
+            product: {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              image_url: product.imageUrl,
+            },
+          };
+          setMobileOpen(false);
+          pay.startFromCheckout(product, fakeCheckout);
+        }
+      }
+    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
+      if (handledWsMessageRef.current === globalWs.lastMessage) return;
+      if (pay.state !== "success" && pay.state !== "complete") {
+        handledWsMessageRef.current = globalWs.lastMessage;
+
+        if (!pay.product && msg.slot_number) {
+          const product = products.find((p) => p.slotNumber === msg.slot_number);
+          if (product) {
+            const fakeCheckout: CheckoutResult = {
+              transaction_id: msg.transaction_id,
+              amount: msg.amount || product.price,
+              session_id: msg.session_id,
+              currency: "THB",
+              payment_status: "succeeded",
+              promptpay: msg.promptpay || null,
+              payment_intent_id: msg.payment_intent_id || undefined,
+              product: {
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                image_url: product.imageUrl,
+              },
+            };
+            pay.showSuccess(product, fakeCheckout);
+          } else {
+            pay.simulatePaid();
+          }
+        } else {
+          pay.simulatePaid();
+        }
+
+        setMobileOpen(false);
+      }
+    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
+      if (pay.product && pay.state === "waiting") {
+        handledWsMessageRef.current = globalWs.lastMessage;
+        pay.cancel();
+      }
+    } else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
+      if (pay.product && pay.state === "waiting") {
+        handledWsMessageRef.current = globalWs.lastMessage;
+        pay.cancel();
+      }
+    }
+  }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
+
+  const mobileProduct = products.find((p) => p.available) ?? null;
+
+  return (
     <main className="relative flex h-screen w-screen max-w-[100vw] flex-col overflow-hidden">
       <FloatingDecorations />
       <HeroBanner onMobileOrder={() => setMobileOpen(true)} />
@@ -246,7 +267,6 @@ export function HomePage() {
         onRefresh={pay.refresh}
       />
 
-      {/* ── Machine unavailable blocking overlay ── */}
       {isMachineUnavailable && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md">
           <div className="mx-8 w-full max-w-lg rounded-3xl border-2 border-secondary bg-card px-12 py-14 text-center shadow-card">
@@ -269,6 +289,5 @@ export function HomePage() {
         </div>
       )}
     </main>
-    </WsProvider>
   );
 }
