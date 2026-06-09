@@ -5,25 +5,6 @@ import { th } from "@/i18n/th";
 
 const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED", "CANCELLED", "INVALIDATED", "KIOSK_SWITCH_CANCELLED"]);
 
-function normalizePaymentStatus(status: string | null | undefined) {
-  if (!status) return null;
-  const normalized = status.toUpperCase();
-
-  if (normalized === "SUCCEEDED" || normalized === "SUCCESS" || normalized === "PAID") {
-    return "SUCCEEDED";
-  }
-
-  if (normalized === "FAILED" || normalized === "PAYMENT_FAILED") {
-    return "FAILED";
-  }
-
-  if (normalized === "CANCELED") {
-    return "CANCELLED";
-  }
-
-  return normalized;
-}
-
 export function usePaymentWebSocket(
   machineUuid: string | null | undefined,
   transactionId: number | null | undefined,
@@ -64,12 +45,10 @@ export function usePaymentWebSocket(
               if (state.version && state.version <= latestVersionRef.current) return;
               if (state.version) latestVersionRef.current = state.version;
 
-              const status = normalizePaymentStatus(state.status);
-
               if (state.paymentChannel === 'kiosk' && state.status === 'awaiting_payment') {
                 setPaymentStatus("SWITCH_TO_KIOSK");
-              } else if (status && TERMINAL_STATUSES.has(status)) {
-                setPaymentStatus(status);
+              } else if (state.status === "SUCCEEDED" || state.status === "FAILED" || state.status === "KIOSK_SWITCH_CANCELLED") {
+                setPaymentStatus(state.status);
               }
             }
           })
@@ -180,15 +159,13 @@ export function usePaymentWebSocket(
         if (message.type === "MOBILE_PAYMENT_SUCCESS" && isTargetTransaction) {
           setPaymentStatus("SUCCEEDED");
           setConnectionError(null);
-          ws.close();
           return;
         }
 
         if (message.type === "payment.updated" && isTargetTransaction) {
-          const status = normalizePaymentStatus(message.payment_status);
-          setPaymentStatus(status);
+          setPaymentStatus(message.payment_status ?? null);
           setConnectionError(null);
-          if (status && TERMINAL_STATUSES.has(status)) {
+          if (message.payment_status && TERMINAL_STATUSES.has(message.payment_status)) {
             ws.close();
           }
         }

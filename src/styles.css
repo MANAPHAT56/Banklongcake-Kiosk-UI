@@ -1,19 +1,22 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+
+@source ".";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Cute kawaii cake vending kiosk design system */
+/* บ้านกล่องเค้ก — Kawaii Premium Dessert Brand */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
-  --radius-2xl: calc(var(--radius) + 12px);
-  --radius-3xl: calc(var(--radius) + 20px);
-  --radius-4xl: calc(var(--radius) + 28px);
+  --font-display: "Fredoka", "Quicksand", system-ui, sans-serif;
+  --font-sans: "Quicksand", "Nunito", system-ui, sans-serif;
+
+  --radius-sm: 0.625rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-2xl: 2.5rem;
+  --radius-3xl: 3rem;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -37,106 +40,166 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-cream: var(--cream);
-  --color-blush: var(--blush);
-
-  --font-display: "Baloo 2", "Quicksand", system-ui, sans-serif;
-  --font-sans: "Quicksand", system-ui, sans-serif;
+  --color-berry: var(--berry);
 
   --shadow-soft: 0 8px 24px -8px color-mix(in oklab, var(--primary) 25%, transparent);
-  --shadow-card: 0 12px 32px -12px color-mix(in oklab, var(--accent) 30%, transparent);
-  --shadow-glow: 0 0 60px -10px color-mix(in oklab, var(--primary) 50%, transparent);
+  --shadow-bubble: 0 10px 0 -2px color-mix(in oklab, var(--accent) 30%, transparent), 0 20px 40px -12px color-mix(in oklab, var(--accent) 35%, transparent);
+  --shadow-card: 0 4px 20px -4px color-mix(in oklab, var(--primary) 20%, transparent);
+
+  --gradient-pink: linear-gradient(135deg, var(--primary), var(--accent));
+  --gradient-cream: linear-gradient(180deg, var(--background), var(--secondary));
+  --gradient-hero: radial-gradient(ellipse at top, color-mix(in oklab, var(--primary) 30%, transparent), transparent 60%), linear-gradient(180deg, var(--background), color-mix(in oklab, var(--secondary) 60%, var(--background)));
 }
 
 :root {
   --radius: 1.25rem;
+
   /* #FFF7FA */
-  --background: oklch(0.982 0.012 8);
+  --background: oklch(0.98 0.014 8);
   /* #5A4A4A */
   --foreground: oklch(0.39 0.014 25);
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.39 0.014 25);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.39 0.014 25);
 
   /* #FF8FB1 */
-  --primary: oklch(0.76 0.146 8);
+  --primary: oklch(0.76 0.135 5);
   --primary-foreground: oklch(1 0 0);
+
   /* #FFD6E7 */
-  --secondary: oklch(0.92 0.05 5);
+  --secondary: oklch(0.92 0.055 5);
   --secondary-foreground: oklch(0.39 0.014 25);
+
+  --muted: oklch(0.95 0.025 5);
+  --muted-foreground: oklch(0.55 0.025 25);
+
   /* #FF5C93 */
-  --accent: oklch(0.68 0.21 5);
+  --accent: oklch(0.68 0.19 5);
   --accent-foreground: oklch(1 0 0);
 
-  --muted: oklch(0.95 0.018 10);
-  --muted-foreground: oklch(0.55 0.025 20);
-
   /* #FF6B6B */
-  --destructive: oklch(0.69 0.19 22);
+  --destructive: oklch(0.68 0.19 25);
   --destructive-foreground: oklch(1 0 0);
+
   /* #6BCB77 */
-  --success: oklch(0.78 0.155 145);
+  --success: oklch(0.74 0.15 145);
   --success-foreground: oklch(1 0 0);
 
-  --border: oklch(0.92 0.025 10);
-  --input: oklch(0.92 0.025 10);
-  --ring: oklch(0.68 0.21 5);
+  --cream: oklch(0.97 0.02 60);
+  --berry: oklch(0.58 0.22 10);
 
-  --cream: oklch(0.97 0.025 60);
-  --blush: oklch(0.94 0.04 10);
+  --border: oklch(0.92 0.04 5);
+  --input: oklch(0.92 0.04 5);
+  --ring: oklch(0.76 0.135 5);
 }
 
-.dark { /* kiosk uses light theme only, retained for safety */
-  --background: oklch(0.982 0.012 8);
-  --foreground: oklch(0.39 0.014 25);
+.dark {
+  --background: oklch(0.22 0.03 5);
+  --foreground: oklch(0.96 0.01 5);
+  --card: oklch(0.28 0.04 5);
+  --card-foreground: oklch(0.96 0.01 5);
+  --popover: oklch(0.28 0.04 5);
+  --popover-foreground: oklch(0.28 0.04 5);
+  --primary: oklch(0.76 0.135 5);
+  --primary-foreground: oklch(0.2 0.02 5);
+  --secondary: oklch(0.35 0.06 5);
+  --secondary-foreground: oklch(0.96 0.01 5);
+  --muted: oklch(0.32 0.04 5);
+  --muted-foreground: oklch(0.72 0.03 5);
+  --accent: oklch(0.68 0.19 5);
+  --accent-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.76 0.135 5);
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html, body, #root { height: 100%; }
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    background: radial-gradient(ellipse at top, color-mix(in oklab, var(--primary) 12%, var(--background)), var(--background) 60%);
+    background: var(--gradient-cream);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-    overflow-x: hidden;
-    max-width: 100vw;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
 
 @layer utilities {
-  .text-shadow-soft { text-shadow: 0 2px 8px color-mix(in oklab, var(--primary) 30%, transparent); }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { scrollbar-width: none; }
-  .bg-gradient-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); }
-  .bg-gradient-soft { background: linear-gradient(180deg, var(--secondary), var(--background)); }
+  .text-balance { text-wrap: balance; }
+  .bg-gradient-pink { background: var(--gradient-pink); }
+  .bg-gradient-hero { background: var(--gradient-hero); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-bubble { box-shadow: var(--shadow-bubble); }
+  .shadow-card { box-shadow: var(--shadow-card); }
 
-  .kiosk-grid-section {
-    padding: 16px 24px;
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-    padding-left: max(24px, env(safe-area-inset-left, 0px));
-    padding-right: max(24px, env(safe-area-inset-right, 0px));
+  .bubble-btn {
+    background: var(--gradient-pink);
+    color: var(--color-primary-foreground);
+    border-radius: 999px;
+    padding: 0.95rem 2rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    box-shadow: var(--shadow-bubble);
+    transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 3px solid color-mix(in oklab, white 90%, var(--primary));
+  }
+  .bubble-btn:hover { transform: translateY(-3px) scale(1.03); }
+  .bubble-btn:active { transform: translateY(1px) scale(0.98); }
+
+  .bubble-btn-soft {
+    background: var(--color-card);
+    color: var(--color-accent);
+    border-radius: 999px;
+    padding: 0.95rem 2rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    box-shadow: var(--shadow-card);
+    border: 3px solid var(--color-secondary);
+    transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .bubble-btn-soft:hover { transform: translateY(-3px) scale(1.03); }
+
+  .sticker-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: var(--color-secondary);
+    color: var(--color-accent);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    border: 2px solid var(--color-card);
+    box-shadow: 0 2px 0 color-mix(in oklab, var(--accent) 25%, transparent);
   }
 
-  .kiosk-grid-viewport {
-    overflow: hidden;
-    padding: 4px;
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50% { transform: translateY(-18px) rotate(6deg); }
   }
-
-  .kiosk-product-grid {
-    display: grid;
-    gap: 16px;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
   }
-
-  .kiosk-safe-bottom {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
-  }
+  .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+  .animate-wiggle { animation: wiggle 3s ease-in-out infinite; }
 }
