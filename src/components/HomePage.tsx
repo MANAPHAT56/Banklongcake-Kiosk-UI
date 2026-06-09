@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { XCircle } from "lucide-react";
 import { HeroBanner } from "./HeroBanner";
 import { FloatingDecorations } from "./FloatingDecorations";
@@ -26,14 +26,11 @@ export function HomePage() {
   const [storedKioskSecret] = useState(() => getKioskSecret());
   const [authState, setAuthState] = useState<"checking" | "ready" | "register">("checking");
   const [authError, setAuthError] = useState<string | null>(null);
-  const handledWsMessageRef = useRef<unknown>(null);
-
   const machineUuid = envMachineUuid ?? registeredMachineUuid;
   const activeMachineUuid = authState === "ready" ? machineUuid : null;
   const slots = useMachineSlots(activeMachineUuid);
   const pay = usePaymentFlow(activeMachineUuid);
   const globalWs = usePaymentWebSocket(activeMachineUuid, null, Boolean(activeMachineUuid));
-
   const products = useMemo<Product[]>(() => {
     if (!slots.data?.slots.length) return fallbackProducts;
     return slotsToKioskProducts(slots.data.slots);
@@ -45,40 +42,11 @@ export function HomePage() {
     (slots.data.machine.status !== "ACTIVE" || !slots.data.machine.is_online);
 
   useEffect(() => {
-    if (!globalWs.lastMessage) return;
-    const msg = globalWs.lastMessage;
-    if (handledWsMessageRef.current === msg) return;
-
-    if (msg.type === "SHOW_KIOSK_QR") {
+    if (globalWs.paymentStatus === "SWITCH_TO_KIOSK" && globalWs.lastMessage) {
+      const msg = globalWs.lastMessage;
       if (msg.slot_number && msg.transaction_id) {
         const product = products.find((p) => p.slotNumber === msg.slot_number);
         if (product) {
-          handledWsMessageRef.current = msg;
-          const fakeCheckout: CheckoutResult = {
-            transaction_id: msg.transaction_id,
-            amount: msg.amount || product.price,
-            session_id: msg.session_id ?? null,
-            currency: "THB",
-            payment_status: "pending",
-            promptpay: null, // QR ยังไม่มา modal จะแสดง spinner ก่อน
-            payment_intent_id: undefined,
-            product: {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              image_url: product.imageUrl,
-            },
-          };
-          setMobileOpen(false);
-          pay.startFromCheckout(product, fakeCheckout);
-          // เอา pay.refresh() ออก เนื่องจาก startFromCheckout จะดึงข้อมูล QR ให้อัตโนมัติแล้ว
-        }
-      }
-    } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
-      if (msg.slot_number && msg.transaction_id) {
-        const product = products.find((p) => p.slotNumber === msg.slot_number);
-        if (product) {
-          handledWsMessageRef.current = msg;
           const fakeCheckout: CheckoutResult = {
             transaction_id: msg.transaction_id,
             amount: msg.amount || product.price,
@@ -94,47 +62,18 @@ export function HomePage() {
               image_url: product.imageUrl,
             },
           };
+
           setMobileOpen(false);
           pay.startFromCheckout(product, fakeCheckout);
         }
       }
-    } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
-      if (handledWsMessageRef.current === globalWs.lastMessage) return;
+    } else if (globalWs.paymentStatus === "SUCCEEDED") {
       if (pay.state !== "success" && pay.state !== "complete") {
-        handledWsMessageRef.current = globalWs.lastMessage;
-        
-        const msg = globalWs.lastMessage;
-        if (!pay.product && msg.slot_number) {
-           const product = products.find(p => p.slotNumber === msg.slot_number);
-           if (product) {
-              const fakeCheckout: CheckoutResult = {
-                transaction_id: msg.transaction_id,
-                amount: msg.amount || product.price,
-                session_id: msg.session_id,
-                currency: "THB",
-                payment_status: "succeeded",
-                promptpay: msg.promptpay || null,
-                payment_intent_id: msg.payment_intent_id || undefined,
-                product: {
-                  id: product.id,
-                  name: product.name,
-                  price: product.price,
-                  image_url: product.imageUrl,
-                },
-              };
-              pay.showSuccess(product, fakeCheckout);
-           } else {
-             pay.simulatePaid();
-           }
-        } else {
-           pay.simulatePaid();
-        }
-        
         setMobileOpen(false);
+        pay.simulatePaid();
       }
-    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
+    } else if (globalWs.paymentStatus === "CANCELLED") {
       if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = globalWs.lastMessage;
         pay.cancel();
       }
     }
