@@ -1,3 +1,4 @@
+// usePaymentWebSocket.ts
 import { useEffect, useRef, useState } from "react";
 import { fetchTransactionState, getPaymentWebSocketUrl } from "@/lib/api/client";
 import { th } from "@/i18n/th";
@@ -14,6 +15,7 @@ export function usePaymentWebSocket(
   const [lastMessage, setLastMessage] = useState<any | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const latestVersionRef = useRef(0);
+  const versionOwnerRef = useRef<number | null>(null); // 🆕 track ว่า version นี้เป็นของ transaction ไหน
 
   useEffect(() => {
     if (!enabled || !machineUuid) {
@@ -24,23 +26,25 @@ export function usePaymentWebSocket(
 
     let closed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let heartbeatTimer: ReturnType<typeof setInterval> | null = null; // 🆕 เพิ่มตัวจับเวลา Heartbeat
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let reconnectDelay = 2000;
 
     function connect() {
       if (closed) return;
-
-      // Pull recovery state on start or reconnect
       if (transactionId) {
         fetchTransactionState(transactionId)
           .then((res) => {
             if (closed) return;
             const state = res.state;
             if (state) {
+              // 🆕 reset version ref ถ้าเป็น transaction ใหม่
+              if (versionOwnerRef.current !== transactionId) {
+                versionOwnerRef.current = transactionId;
+                latestVersionRef.current = 0;
+              }
               if (state.version && state.version <= latestVersionRef.current) return;
               if (state.version) latestVersionRef.current = state.version;
 
-              // Update local status based on current authoritative state if it indicates a terminal or handled state
               if (state.paymentChannel === 'kiosk' && state.status === 'awaiting_payment') {
                 setPaymentStatus("SWITCH_TO_KIOSK");
               } else if (state.status === "SUCCEEDED" || state.status === "FAILED" || state.status === "KIOSK_SWITCH_CANCELLED") {
@@ -48,27 +52,21 @@ export function usePaymentWebSocket(
               }
             }
           })
-          .catch(() => {
-            // Silent catch, let WS handle real time
-          });
+          .catch(() => {});
       }
     }
 
-    // 🆕 ฟังก์ชันเริ่มส่ง Ping เพื่อรักษาและตรวจสอบสถานะการเชื่อมต่อ
     function startHeartbeat(ws: WebSocket) {
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      
       heartbeatTimer = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          // ส่ง action "ping" ไปหา server (ปรับเปลี่ยน payload ตามที่ backend รองรับได้เลย)
           ws.send(JSON.stringify({ action: "ping" }));
         }
-      }, 30000); // ส่งทุกๆ 30 วินาที
+      }, 30000);
     }
 
     function initWs() {
       if (closed) return;
-
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -81,17 +79,11 @@ export function usePaymentWebSocket(
       ws.onopen = () => {
         if (closed) return;
         setConnectionError(null);
-        
-        // 1. ส่งข้อมูล subscribe ปกติ
-        ws.send(
-          JSON.stringify({
-            action: "subscribe",
-            machine_uuid: machineUuid,
-            transaction_id: transactionId,
-          }),
-        );
-
-        // 2. 🆕 เริ่มระบบส่ง Heartbeat ทันทีที่ต่อติด
+        ws.send(JSON.stringify({
+          action: "subscribe",
+          machine_uuid: machineUuid,
+          transaction_id: transactionId,
+        }));
         startHeartbeat(ws);
       };
 
@@ -112,10 +104,16 @@ export function usePaymentWebSocket(
           return;
         }
 
-        // ถ้า server มีการตอบกลับ pong หรือยอมรับข้อความ ping สามารถดักข้ามตรงนี้ได้เลย
         if (message.type === "pong") return;
 
+        // 🆕 version deduplication แบบ scope ต่อ transaction
         if (message.version != null) {
+          const msgTxId = message.transaction_id ?? null;
+          if (msgTxId !== null && versionOwnerRef.current !== msgTxId) {
+            // เปลี่ยน transaction → reset version
+            versionOwnerRef.current = msgTxId;
+            latestVersionRef.current = 0;
+          }
           if (message.version <= latestVersionRef.current) return;
           latestVersionRef.current = message.version;
         }
@@ -141,10 +139,10 @@ export function usePaymentWebSocket(
         }
 
         if (message.type === "KIOSK_SWITCH_CANCELLED" && isTargetTransaction) {
-  setPaymentStatus("KIOSK_SWITCH_CANCELLED"); // เดิมเป็น "CANCELLED"
-  setConnectionError(null);
-  return;
-}
+          setPaymentStatus("KIOSK_SWITCH_CANCELLED");
+          setConnectionError(null);
+          return;
+        }
 
         if (message.type === "CART_UPDATED" && isTargetTransaction) {
           setPaymentStatus("CART_UPDATED");
@@ -167,7 +165,6 @@ export function usePaymentWebSocket(
         if (message.type === "payment.updated" && isTargetTransaction) {
           setPaymentStatus(message.payment_status ?? null);
           setConnectionError(null);
-
           if (message.payment_status && TERMINAL_STATUSES.has(message.payment_status)) {
             ws.close();
           }
@@ -175,15 +172,12 @@ export function usePaymentWebSocket(
       };
 
       ws.onerror = () => {
-        if (!closed) {
-          setConnectionError(th.wsConnectFailed);
-        }
+        if (!closed) setConnectionError(th.wsConnectFailed);
       };
 
       ws.onclose = () => {
         wsRef.current = null;
-        if (heartbeatTimer) clearInterval(heartbeatTimer); // 🆕 ล้างไทเมอร์เมื่อหลุด
-        
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (!closed) {
           reconnectTimer = setTimeout(() => {
             reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
@@ -198,11 +192,8 @@ export function usePaymentWebSocket(
     return () => {
       closed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (heartbeatTimer) clearInterval(heartbeatTimer); // 🆕 เคลียร์ไทเมอร์ตอน unmount คอมโพเนนต์
-      if (
-        wsRef.current &&
-        (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)
-      ) {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
         wsRef.current.close();
       }
       wsRef.current = null;
