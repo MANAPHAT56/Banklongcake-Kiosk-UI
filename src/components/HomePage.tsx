@@ -114,7 +114,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
 
     if (msg.type === "SHOW_KIOSK_QR") {
       if (msg.slot_number && msg.transaction_id) {
-        const product = products.find((p) => p.slotNumber === msg.slot_number);
+        const product = products.find((p) => Number(p.slotNumber) === Number(msg.slot_number));
         if (product) {
           handledWsMessageRef.current = msg;
           const fakeCheckout: CheckoutResult = {
@@ -138,7 +138,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
       }
     } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
       if (msg.slot_number && msg.transaction_id) {
-        const product = products.find((p) => p.slotNumber === msg.slot_number);
+        const product = products.find((p) => Number(p.slotNumber) === Number(msg.slot_number));
         if (product) {
           handledWsMessageRef.current = msg;
           const fakeCheckout: CheckoutResult = {
@@ -166,7 +166,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         handledWsMessageRef.current = globalWs.lastMessage;
 
         if (!pay.product && msg.slot_number) {
-          const product = products.find((p) => p.slotNumber === msg.slot_number);
+          const product = products.find((p) => Number(p.slotNumber) === Number(msg.slot_number));
           if (product) {
             const fakeCheckout: CheckoutResult = {
               transaction_id: msg.transaction_id,
