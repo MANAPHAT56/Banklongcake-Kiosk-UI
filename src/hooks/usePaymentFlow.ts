@@ -164,7 +164,14 @@ useEffect(() => {
     const timer = window.setTimeout(() => cancel(), 10000);
     return () => window.clearTimeout(timer);
   }, [state, product, cancel]);
-
+const reset = useCallback(() => {
+  requestRef.current += 1;
+  setProduct(null);
+  setCheckout(null);
+  setState("waiting");
+  setError(null);
+  setStarting(false);
+}, []);
   return {
     product,
     state,
@@ -173,6 +180,7 @@ useEffect(() => {
     error,
     connectionError,
     start,
+    reset,
     startFromCheckout,
     cancel,
     refresh,
