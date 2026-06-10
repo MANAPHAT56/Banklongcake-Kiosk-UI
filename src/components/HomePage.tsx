@@ -200,10 +200,11 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         pay.cancel();
       }
     } else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
-      if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = globalWs.lastMessage;
-      }
-    }
+  if (pay.product && pay.state === "waiting") {
+    handledWsMessageRef.current = globalWs.lastMessage;
+    pay.cancel(); // ✅ เพิ่มบรรทัดนี้
+  }
+}
   }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
 
   const mobileProduct = products.find((p) => p.available) ?? null;
