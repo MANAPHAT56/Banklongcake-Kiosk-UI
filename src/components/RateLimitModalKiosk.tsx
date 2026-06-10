@@ -9,7 +9,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, ShoppingBag, X } from "lucide-react";
-import { useRateLimitCountdown } from "./useRateLimitCountdown";
+import { useRateLimitCountdown } from "../hooks/useRateLimitCountdown";
 
 type Props = {
   open: boolean;
