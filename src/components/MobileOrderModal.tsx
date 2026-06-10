@@ -87,7 +87,14 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
 
     if (paymentStatus === "SWITCH_TO_KIOSK") {
       handledStatusRef.current = paymentStatus;
-      onPayAtKiosk(product, checkout);
+      let finalProduct = product;
+      if (lastMessage?.slot_number) {
+        const updatedProduct = products.find(
+          (p) => Number(p.slotNumber) === Number(lastMessage.slot_number)
+        );
+        if (updatedProduct) finalProduct = updatedProduct;
+      }
+      onPayAtKiosk(finalProduct, checkout);
       return;
     }
 
