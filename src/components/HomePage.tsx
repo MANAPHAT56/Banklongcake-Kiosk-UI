@@ -270,6 +270,10 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
 <RateLimitModalKiosk
   open={pay.rateLimited}
   onClose={() => pay.reset()}
+  onRetry={() => {
+    pay.clearRateLimit();
+    if (pay.product) void pay.start(pay.product);
+  }}
   cooldownSeconds={pay.rateLimitRetryAfter}
 />
       {isMachineUnavailable && (
