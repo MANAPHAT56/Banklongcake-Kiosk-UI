@@ -91,6 +91,7 @@ export function usePaymentFlow(machineUuid: string | null) {
         // ไม่ปิด product — ให้ retry ได้หลัง countdown หมด
       } else {
         setProduct(null);
+        console.log("DEBUG ERROR:", err); // 👈 ใส่บรรทัดนี้เพื่อดูว่า Error ที่โยนออกมาคืออะไร
         setState("waiting");
         setError(err instanceof Error ? err.message : th.createPaymentFailed);
       }
