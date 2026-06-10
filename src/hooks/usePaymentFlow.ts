@@ -35,11 +35,13 @@ export function usePaymentFlow(machineUuid: string | null) {
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const requestRef = useRef(0);
-const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
-const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)
-  ? rawStatus
-  : null;
+
+  const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
+  const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)
+    ? rawStatus
+    : null;
 
   const cancel = useCallback(() => {
     requestRef.current += 1;
@@ -50,6 +52,7 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
     setCheckout(null);
     setState("waiting");
     setError(null);
+    setRateLimited(false);
   }, [checkout]);
 
   const start = useCallback(async (p: Product) => {
@@ -59,6 +62,7 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
 
     setStarting(true);
     setError(null);
+    setRateLimited(false);
     setProduct(p);
     setCheckout(null);
     setState("waiting");
@@ -73,9 +77,19 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
       setCheckout(result);
     } catch (err) {
       if (requestRef.current !== requestId) return;
-      setProduct(null);
-      setState("waiting");
-      setError(err instanceof Error ? err.message : th.createPaymentFailed);
+
+      const isRateLimit =
+        (err as { status?: number })?.status === 429 ||
+        (err as { code?: string })?.code === "RATE_LIMIT_EXCEEDED";
+
+      if (isRateLimit) {
+        // ไม่ปิด product — ให้ retry ได้หลัง countdown หมด
+        setRateLimited(true);
+      } else {
+        setProduct(null);
+        setState("waiting");
+        setError(err instanceof Error ? err.message : th.createPaymentFailed);
+      }
     } finally {
       if (requestRef.current === requestId) {
         setStarting(false);
@@ -83,13 +97,18 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
     }
   }, [machineUuid]);
 
+  const clearRateLimit = useCallback(() => {
+    setRateLimited(false);
+  }, []);
+
   const startFromCheckout = useCallback(async (p: Product, result: CheckoutResult) => {
     requestRef.current += 1;
     const requestId = requestRef.current;
-    
+
     setError(null);
+    setRateLimited(false);
     setProduct(p);
-    
+
     // If we already have promptpay (e.g. from standard createCheckout), just set it
     if (result.promptpay?.image_url_png || result.promptpay?.image_url_svg) {
       setStarting(false);
@@ -102,16 +121,16 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
     setStarting(true);
     setCheckout(result);
     setState("waiting");
-    
+
     try {
       const payResult = await payCheckoutForKiosk(result.transaction_id);
       if (requestRef.current !== requestId) return;
-      
+
       // 💡 ป้องกันข้อมูลสินค้าเก่าโดนทับ
-      setCheckout({ 
-        ...result, 
+      setCheckout({
+        ...result,
         ...payResult,
-        product: payResult.product ?? result.product 
+        product: payResult.product ?? result.product,
       });
     } catch (err) {
       if (requestRef.current !== requestId) return;
@@ -128,6 +147,7 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
   const showSuccess = useCallback((p: Product, result: CheckoutResult) => {
     requestRef.current += 1;
     setError(null);
+    setRateLimited(false);
     setProduct(p);
     setCheckout(result);
     setState("success");
@@ -142,14 +162,14 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
       setError(null);
       try {
         const payResult = await payCheckoutForKiosk(checkout.transaction_id);
-        
+
         // 💡 ป้องกันคิวอาร์ใหม่ไปดึงข้อมูลสินค้าอื่นมาทับของเดิม
         setCheckout((prev) => {
           if (!prev) return payResult;
           return {
             ...prev,
             ...payResult,
-            product: payResult.product ?? prev.product
+            product: payResult.product ?? prev.product,
           };
         });
       } catch (err) {
@@ -162,25 +182,26 @@ const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage
     }
   }, [product, checkout, start]);
 
-useEffect(() => {
-  if (paymentStatus === "SUCCEEDED") {
-    setState("success");
-  }
+  useEffect(() => {
+    if (paymentStatus === "SUCCEEDED") {
+      setState("success");
+    }
 
-  if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
-    setError(th.paymentNotCompleted);
-    cancel();
-  }
+    if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
+      setError(th.paymentNotCompleted);
+      cancel();
+    }
 
-  if (paymentStatus === "KIOSK_SWITCH_CANCELLED") {
-    requestRef.current += 1;
-    setProduct(null);
-    setCheckout(null);
-    setState("waiting");
-    setError(null);
-    setStarting(false);
-  }
-}, [paymentStatus, cancel]);
+    if (paymentStatus === "KIOSK_SWITCH_CANCELLED") {
+      requestRef.current += 1;
+      setProduct(null);
+      setCheckout(null);
+      setState("waiting");
+      setError(null);
+      setStarting(false);
+      setRateLimited(false);
+    }
+  }, [paymentStatus, cancel]);
 
   useEffect(() => {
     if (!checkout?.transaction_id || state !== "waiting") return;
@@ -214,6 +235,7 @@ useEffect(() => {
           setState("waiting");
           setError(null);
           setStarting(false);
+          setRateLimited(false);
         }
       } catch {
         // WebSocket remains the primary path; polling is only recovery when WS misses an event.
@@ -245,23 +267,28 @@ useEffect(() => {
     const timer = window.setTimeout(() => cancel(), 10000);
     return () => window.clearTimeout(timer);
   }, [state, product, cancel]);
-const reset = useCallback(() => {
-  requestRef.current += 1;
-  setProduct(null);
-  setCheckout(null);
-  setState("waiting");
-  setError(null);
-  setStarting(false);
-}, []);
+
+  const reset = useCallback(() => {
+    requestRef.current += 1;
+    setProduct(null);
+    setCheckout(null);
+    setState("waiting");
+    setError(null);
+    setStarting(false);
+    setRateLimited(false);
+  }, []);
+
   return {
     product,
     state,
     checkout,
     starting,
     error,
+    rateLimited,
     connectionError,
     start,
     reset,
+    clearRateLimit,
     startFromCheckout,
     cancel,
     refresh,

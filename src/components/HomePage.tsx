@@ -7,6 +7,7 @@ import { ProductDetailModal } from "./ProductDetailModal";
 import { QrPaymentModal } from "./QrPaymentModal";
 import { MobileOrderModal } from "./MobileOrderModal";
 import { RegisterKioskPage } from "./RegisterKioskPage";
+import { RateLimitModalKiosk } from "./RateLimitModalKiosk";
 import { products as fallbackProducts, type Product } from "@/data/products";
 import { useMachineSlots } from "@/hooks/useMachineSlots";
 import { usePaymentFlow } from "@/hooks/usePaymentFlow";
@@ -96,7 +97,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
 
   const slots = useMachineSlots(activeMachineUuid);
   const pay = usePaymentFlow(activeMachineUuid);
-  const globalWs = useWs(); // ✅ อยู่ใน WsProvider แล้ว
+  const globalWs = useWs();
 
   const products = useMemo<Product[]>(() => {
     if (!slots.data?.slots.length) return fallbackProducts;
@@ -259,11 +260,21 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         error={pay.error}
         connectionError={pay.connectionError}
         onClose={() => {
-              pay.reset(); // 🆕 clear product/checkout ออก ทำให้ modal ปิด
+          pay.reset();
           setMobileOpen(false);
         }}
         onCancel={pay.cancel}
         onRefresh={pay.refresh}
+      />
+
+      {/* ✅ Rate limit modal — z-[60] ทับ QrPaymentModal (z-50) */}
+      <RateLimitModalKiosk
+        open={pay.rateLimited}
+        onClose={() => {
+          pay.clearRateLimit();
+          if (pay.product) void pay.start(pay.product);
+        }}
+        cooldownSeconds={30}
       />
 
       {isMachineUnavailable && (
