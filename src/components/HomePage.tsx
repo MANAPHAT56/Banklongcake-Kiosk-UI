@@ -267,14 +267,14 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         onRefresh={pay.refresh}
       />
 
-      {/* ✅ Rate limit modal — z-[60] ทับ QrPaymentModal (z-50) */}
+      {/* ✅ Rate limit modal — cooldownSeconds อิงจาก Redis TTL จริง */}
       <RateLimitModalKiosk
         open={pay.rateLimited}
         onClose={() => {
           pay.clearRateLimit();
           if (pay.product) void pay.start(pay.product);
         }}
-        cooldownSeconds={30}
+        cooldownSeconds={pay.rateLimitRetryAfter}
       />
 
       {isMachineUnavailable && (

@@ -28,7 +28,7 @@ export function useRateLimitCountdown(open: boolean, cooldownSeconds: number) {
     };
   }, [open, cooldownSeconds]);
 
-  const progress = remaining / cooldownSeconds; // 1.0 → 0.0
+  const progress = cooldownSeconds > 0 ? remaining / cooldownSeconds : 0;
 
   return { remaining, progress };
 }

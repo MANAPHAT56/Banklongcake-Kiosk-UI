@@ -43,9 +43,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok || payload.success === false) {
     const message = payload.error?.message ?? payload.message ?? `Request failed (${response.status})`;
-    const error = new Error(message) as Error & { code?: string; status?: number };
+    const error = new Error(message) as Error & { code?: string; status?: number ; retryAfter?: number };
     error.code = payload.error?.code;
     error.status = response.status;
+   error.retryAfter = payload.retryAfter;  
     throw error;
   }
 
