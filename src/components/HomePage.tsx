@@ -202,7 +202,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
     } else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
   if (pay.product && pay.state === "waiting") {
     handledWsMessageRef.current = globalWs.lastMessage;
-    pay.cancel(); // ✅ เพิ่มบรรทัดนี้
+     pay.reset(); // ✅ แทนการ set ทีละ field
   }
 }
   }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
