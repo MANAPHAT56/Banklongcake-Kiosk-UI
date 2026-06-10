@@ -267,16 +267,11 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         onRefresh={pay.refresh}
       />
 
-      {/* ✅ Rate limit modal — cooldownSeconds อิงจาก Redis TTL จริง */}
-      <RateLimitModalKiosk
-        open={pay.rateLimited}
-        onClose={() => {
-          pay.clearRateLimit();
-          if (pay.product) void pay.start(pay.product);
-        }}
-        cooldownSeconds={pay.rateLimitRetryAfter}
-      />
-
+<RateLimitModalKiosk
+  open={pay.rateLimited}
+  onClose={() => pay.reset()}
+  cooldownSeconds={pay.rateLimitRetryAfter}
+/>
       {isMachineUnavailable && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md">
           <div className="mx-8 w-full max-w-lg rounded-3xl border-2 border-secondary bg-card px-12 py-14 text-center shadow-card">
