@@ -36,6 +36,7 @@ export function usePaymentFlow(machineUuid: string | null) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const [rateLimitRetryAfter, setRateLimitRetryAfter] = useState(30);
   const requestRef = useRef(0);
 
   const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
@@ -53,6 +54,7 @@ export function usePaymentFlow(machineUuid: string | null) {
     setState("waiting");
     setError(null);
     setRateLimited(false);
+    setRateLimitRetryAfter(30);
   }, [checkout]);
 
   const start = useCallback(async (p: Product) => {
@@ -83,8 +85,10 @@ export function usePaymentFlow(machineUuid: string | null) {
         (err as { code?: string })?.code === "RATE_LIMIT_EXCEEDED";
 
       if (isRateLimit) {
-        // ไม่ปิด product — ให้ retry ได้หลัง countdown หมด
+        const retryAfter = (err as { retryAfter?: number })?.retryAfter ?? 30;
+        setRateLimitRetryAfter(retryAfter);
         setRateLimited(true);
+        // ไม่ปิด product — ให้ retry ได้หลัง countdown หมด
       } else {
         setProduct(null);
         setState("waiting");
@@ -99,6 +103,7 @@ export function usePaymentFlow(machineUuid: string | null) {
 
   const clearRateLimit = useCallback(() => {
     setRateLimited(false);
+    setRateLimitRetryAfter(30);
   }, []);
 
   const startFromCheckout = useCallback(async (p: Product, result: CheckoutResult) => {
@@ -109,7 +114,6 @@ export function usePaymentFlow(machineUuid: string | null) {
     setRateLimited(false);
     setProduct(p);
 
-    // If we already have promptpay (e.g. from standard createCheckout), just set it
     if (result.promptpay?.image_url_png || result.promptpay?.image_url_svg) {
       setStarting(false);
       setCheckout(result);
@@ -117,7 +121,6 @@ export function usePaymentFlow(machineUuid: string | null) {
       return;
     }
 
-    // Otherwise we need to fetch the payment intent via kiosk
     setStarting(true);
     setCheckout(result);
     setState("waiting");
@@ -126,7 +129,6 @@ export function usePaymentFlow(machineUuid: string | null) {
       const payResult = await payCheckoutForKiosk(result.transaction_id);
       if (requestRef.current !== requestId) return;
 
-      // 💡 ป้องกันข้อมูลสินค้าเก่าโดนทับ
       setCheckout({
         ...result,
         ...payResult,
@@ -162,8 +164,6 @@ export function usePaymentFlow(machineUuid: string | null) {
       setError(null);
       try {
         const payResult = await payCheckoutForKiosk(checkout.transaction_id);
-
-        // 💡 ป้องกันคิวอาร์ใหม่ไปดึงข้อมูลสินค้าอื่นมาทับของเดิม
         setCheckout((prev) => {
           if (!prev) return payResult;
           return {
@@ -200,6 +200,7 @@ export function usePaymentFlow(machineUuid: string | null) {
       setError(null);
       setStarting(false);
       setRateLimited(false);
+      setRateLimitRetryAfter(30);
     }
   }, [paymentStatus, cancel]);
 
@@ -236,6 +237,7 @@ export function usePaymentFlow(machineUuid: string | null) {
           setError(null);
           setStarting(false);
           setRateLimited(false);
+          setRateLimitRetryAfter(30);
         }
       } catch {
         // WebSocket remains the primary path; polling is only recovery when WS misses an event.
@@ -276,6 +278,7 @@ export function usePaymentFlow(machineUuid: string | null) {
     setError(null);
     setStarting(false);
     setRateLimited(false);
+    setRateLimitRetryAfter(30);
   }, []);
 
   return {
@@ -285,6 +288,7 @@ export function usePaymentFlow(machineUuid: string | null) {
     starting,
     error,
     rateLimited,
+    rateLimitRetryAfter,
     connectionError,
     start,
     reset,
