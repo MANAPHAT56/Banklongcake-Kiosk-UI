@@ -237,25 +237,24 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         }}
       />
 
-     <MobileOrderModal
-  open={mobileOpen}
-  machineUuid={machineUuid}
-  product={mobileProduct}
-  products={products}
-  onClose={() => setMobileOpen(false)}
-  onCancel={() => { pay.cancel(); setMobileOpen(false); }}  
-  onPayAtKiosk={(product, checkout) => {
-    setMobileOpen(false);
-    pay.startFromCheckout(product, checkout);
-  }}
-  onMobilePaid={(product, checkout) => {
-    setMobileOpen(false);
-    if (pay.checkout?.transaction_id !== checkout.transaction_id) {
-      pay.startFromCheckout(product, checkout);
-      pay.simulatePaid();
-    }
-  }}
-/>
+      <MobileOrderModal
+        open={mobileOpen}
+        machineUuid={machineUuid}
+        product={mobileProduct}
+        products={products}
+        onClose={() => setMobileOpen(false)}
+        onPayAtKiosk={(product, checkout) => {
+          setMobileOpen(false);
+          pay.startFromCheckout(product, checkout);
+        }}
+        onMobilePaid={(product, checkout) => {
+          setMobileOpen(false);
+          if (pay.checkout?.transaction_id !== checkout.transaction_id) {
+            pay.startFromCheckout(product, checkout);
+            pay.simulatePaid();
+          }
+        }}
+      />
 
       <QrPaymentModal
         product={pay.product}
