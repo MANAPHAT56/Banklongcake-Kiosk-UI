@@ -76,7 +76,6 @@ async function handleClose() {
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             className="relative grid h-full max-h-[900px] w-full max-w-[1180px] grid-cols-[0.9fr_1.1fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
-            {/* ปุ่มกากบาทที่เพิ่ม onCancel เข้าไปร่วมกับ onClose */}
             <button
               onClick={() => {
                 handleClose();
@@ -96,13 +95,13 @@ async function handleClose() {
                 />
               </div>
               <div className="shrink-0">
-                <p className="text-xs font-bold text-accent">{th.selectedItem}</p>
-                <h3 className="mt-1 line-clamp-2 font-display text-2xl text-foreground">
+                <p className="text-sm font-bold text-accent">{th.selectedItem}</p>
+                <h3 className="mt-1 line-clamp-2 font-display text-4xl text-foreground">
                   {product.name}
                 </h3>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{th.paymentAmount}</span>
-                  <span className="text-3xl font-bold text-accent">฿{amount}</span>
+                <div className="mt-3 flex items-baseline justify-between">
+                  <span className="text-base font-medium text-muted-foreground">{th.paymentAmount}</span>
+                  <span className="text-5xl font-bold text-accent">฿{amount}</span>
                 </div>
               </div>
             </div>
