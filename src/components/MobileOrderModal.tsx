@@ -224,22 +224,20 @@ useEffect(() => {
               </div>
 
               {/* 🟢 ส่วนแสดงเวลานับถอยหลังแทนคำว่า ใช้ได้ 24 ชั่วโมง */}
-              <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
                 {timeLeft !== null && (
                   <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
                     <Clock size={16} />
                     <span className="text-sm font-bold">
-                      ทำรายการภายใน: {formatCountdown(timeLeft)} นาที
+                      {/* ตัดข้อความ "ทำรายการภายใน" ออกหรือปรับตามต้องการ */}
+                      {formatCountdown(timeLeft)}
                     </span>
                   </div>
                 )}
                 
-                <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2">
-                  <Wifi size={16} className="text-muted-foreground" />
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    {th.sessionInfo(transactionId ? String(transactionId) : null)}
-                  </span>
-                </div>
+                {/* 🟢 ลบส่วน Wifi icon และ th.sessionInfo(transactionId...) ออกไปแล้ว
+                   ถ้าต้องการให้มันยังวางตำแหน่งสวยงาม อาจจะใช้แค่เงื่อนไขเช็กว่ามี transactionId ก็พอ 
+                */}
               </div>
 
               {(error || connectionError) && (
