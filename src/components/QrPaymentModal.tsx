@@ -83,7 +83,6 @@ export function QrPaymentModal({
             {/* ปุ่มกากบาทที่เพิ่ม onCancel เข้าไปร่วมกับ onClose */}
             <button
               onClick={() => {
-                 onCancel(); // ← เพิ่มตรงนี้ → trigger cancelSessionKioskSwitch → ยิง WS
                 onClose();
               }}
               aria-label={th.closePayment}
