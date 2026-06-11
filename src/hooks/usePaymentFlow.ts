@@ -40,9 +40,13 @@ export function usePaymentFlow(machineUuid: string | null) {
   const requestRef = useRef(0);
 
   const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
-  const paymentStatus = !checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)
-    ? rawStatus
-    : null;
+
+  // กรอง paymentStatus ให้ตรงกับ transaction ปัจจุบันเท่านั้น
+  const isRelevantMessage =
+    !checkout?.transaction_id ||
+    isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id);
+
+  const paymentStatus = isRelevantMessage ? rawStatus : null;
 
   const cancel = useCallback(() => {
     requestRef.current += 1;
@@ -88,10 +92,9 @@ export function usePaymentFlow(machineUuid: string | null) {
         const retryAfter = (err as { retryAfter?: number })?.retryAfter ?? 30;
         setRateLimitRetryAfter(retryAfter);
         setRateLimited(true);
-        // ไม่ปิด product — ให้ retry ได้หลัง countdown หมด
       } else {
         setProduct(null);
-        console.log("DEBUG ERROR:", err); // 👈 ใส่บรรทัดนี้เพื่อดูว่า Error ที่โยนออกมาคืออะไร
+        console.log("DEBUG ERROR:", err);
         setState("waiting");
         setError(err instanceof Error ? err.message : th.createPaymentFailed);
       }
@@ -189,21 +192,27 @@ export function usePaymentFlow(machineUuid: string | null) {
     }
 
     if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
-      setError(th.paymentNotCompleted);
-      cancel();
+      // guard: ต้องเป็น transaction เดียวกันเท่านั้นถึงจะ cancel ได้
+      if (!checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)) {
+        setError(th.paymentNotCompleted);
+        cancel();
+      }
     }
 
     if (paymentStatus === "KIOSK_SWITCH_CANCELLED") {
-      requestRef.current += 1;
-      setProduct(null);
-      setCheckout(null);
-      setState("waiting");
-      setError(null);
-      setStarting(false);
-      setRateLimited(false);
-      setRateLimitRetryAfter(30);
+      // guard เดียวกัน
+      if (!checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)) {
+        requestRef.current += 1;
+        setProduct(null);
+        setCheckout(null);
+        setState("waiting");
+        setError(null);
+        setStarting(false);
+        setRateLimited(false);
+        setRateLimitRetryAfter(30);
+      }
     }
-  }, [paymentStatus, cancel]);
+  }, [paymentStatus, lastMessage, checkout, cancel]);
 
   useEffect(() => {
     if (!checkout?.transaction_id || state !== "waiting") return;
