@@ -243,7 +243,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
   product={mobileProduct}
   products={products}
   onClose={() => setMobileOpen(false)}
-  onCancel={() => { pay.cancel(); setMobileOpen(false); }}  {/* ← เพิ่มบรรทัดนี้ */}
+  onCancel={() => { pay.cancel(); setMobileOpen(false); }}  
   onPayAtKiosk={(product, checkout) => {
     setMobileOpen(false);
     pay.startFromCheckout(product, checkout);
