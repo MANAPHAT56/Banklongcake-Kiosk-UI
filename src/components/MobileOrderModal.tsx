@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, Wifi, QrCode, Loader2 } from "lucide-react";
+import { X, Smartphone, Wifi, QrCode, Loader2, AlertTriangle } from "lucide-react";
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
-import { createMobileSession,  cancelSessionKioskSwitch,} from "@/lib/api/client";
+import { createMobileSession, cancelSessionKioskSwitch } from "@/lib/api/client";
 import { useWs } from "./WsContext";
 import { th } from "@/i18n/th";
 
@@ -13,6 +13,7 @@ type Props = {
   product: Product | null;
   products: Product[];
   onClose: () => void;
+  onCancel: () => void;
   onPayAtKiosk: (product: Product, checkout: CheckoutResult) => void;
   onMobilePaid: (product: Product, checkout: CheckoutResult) => void;
 };
@@ -27,24 +28,28 @@ export function MobileOrderModal({
   product,
   products,
   onClose,
+  onCancel,
   onPayAtKiosk,
   onMobilePaid,
 }: Props) {
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const handledStatusRef = useRef<string | null>(null);
   const hasRequestedRef = useRef<boolean>(false);
   const transactionId = checkout?.transaction_id;
-const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
-const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transaction_id, transactionId)
-  ? rawStatus
-  : null;
+
+  const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
+  const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transaction_id, transactionId)
+    ? rawStatus
+    : null;
 
   useEffect(() => {
     if (!open) {
       setCheckout(null);
       setError(null);
+      setShowConfirm(false);
       handledStatusRef.current = null;
       hasRequestedRef.current = false;
       return;
@@ -108,14 +113,18 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
       handledStatusRef.current = paymentStatus;
       return;
     }
-  }, [checkout, onMobilePaid, onPayAtKiosk, open, paymentStatus, product]);
+  }, [checkout, onMobilePaid, onPayAtKiosk, open, paymentStatus, product, lastMessage, products]);
 
   const mobileUrl = checkout?.qr_url ?? "";
   const qrUrl = mobileUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=350x350&margin=10&data=${encodeURIComponent(
-        mobileUrl,
-      )}&color=FF5C93&bgcolor=FFFFFF`
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=350x350&margin=10&data=${encodeURIComponent(mobileUrl)}&color=FF5C93&bgcolor=FFFFFF`
     : "";
+
+  function handleConfirmClose() {
+    setShowConfirm(false);
+    onCancel();
+    onClose();
+  }
 
   return (
     <AnimatePresence>
@@ -135,7 +144,7 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
             className="relative grid h-[92%] w-[92%] grid-cols-[1.1fr_0.9fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
-               onClick={onClose}
+              onClick={() => setShowConfirm(true)}
               aria-label={th.close}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
@@ -177,7 +186,6 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
                 </span>
               </div>
 
-
               {(error || connectionError) && (
                 <p className="max-w-md text-sm font-semibold text-destructive">
                   {error ?? connectionError}
@@ -212,6 +220,56 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
                 </div>
               </div>
             </div>
+
+            {/* Confirm close modal */}
+            <AnimatePresence>
+              {showConfirm && (
+                <motion.div
+                  className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm"
+                  style={{ background: "color-mix(in oklab, var(--foreground) 40%, transparent)" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                    className="mx-10 rounded-3xl bg-card p-8 shadow-[var(--shadow-glow)] text-center"
+                  >
+                    <div className="mx-auto grid size-14 place-items-center rounded-full bg-amber-100 text-amber-500">
+                      <AlertTriangle size={28} strokeWidth={2} />
+                    </div>
+                    <h3 className="mt-4 font-display text-2xl font-bold text-foreground">
+                      คำเตือน
+                    </h3>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-foreground/70">
+                      หากยืนยัน เว็บไซต์ที่สแกนจากคิวอาร์นี้บนโทรศัพท์จะหมดอายุ
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-foreground/70">
+                      หากต้องการทำรายการใหม่ สามารถกดปุ่ม <span className="text-accent">สั่งผ่านมือถือ</span> เพื่อทำรายการใหม่ได้ค่ะ
+                    </p>
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(false)}
+                        className="bubble-btn-soft rounded-2xl px-4 py-3 text-sm font-bold"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmClose}
+                        className="bubble-btn rounded-2xl px-4 py-3 text-sm font-bold"
+                      >
+                        ยืนยัน
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}
