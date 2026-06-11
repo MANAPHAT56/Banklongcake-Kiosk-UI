@@ -229,7 +229,7 @@ useEffect(() => {
                   <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
                     <Clock size={16} />
                     <span className="text-sm font-bold">
-                      ทำรายการภายในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
+                      กรุณาทำรายการภายในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
                     </span>
                   </div>
                 )}
