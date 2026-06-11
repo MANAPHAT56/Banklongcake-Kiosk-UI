@@ -27,7 +27,7 @@ export function ProductDetailModal({ product, onClose, onBuy }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+       
         >
           <motion.div
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
