@@ -135,16 +135,7 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
             className="relative grid h-[92%] w-[92%] grid-cols-[1.1fr_0.9fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
-               onClick={async () => {
-    if (checkout?.session_id) {
-      try {
-        await cancelSessionKioskSwitch(checkout.session_id);
-      } catch {
-        // ไม่ต้อง block UI ถ้า cancel ล้มเหลว
-      }
-    }
-    onClose();
-  }}
+               onClick={onClose}
               aria-label={th.close}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
