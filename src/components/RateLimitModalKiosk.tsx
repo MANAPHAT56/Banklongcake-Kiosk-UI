@@ -132,7 +132,7 @@ export function RateLimitModalKiosk({ open, onClose, cooldownSeconds = 30, onRet
 
               {/* action */}
               <button
-                onClick={onClose}
+                onClick={onRetry}
                 disabled={remaining > 0}
                 className="h-16 w-full rounded-2xl bg-accent text-base font-bold text-white shadow-[var(--shadow-glow)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
