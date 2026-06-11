@@ -113,51 +113,49 @@ export function QrPaymentModal({
 
             <div className="flex min-h-0 flex-col items-center justify-center p-7 text-center">
               <AnimatePresence mode="wait">
-                {state === "waiting" && (
-                  <motion.div
-                    key="waiting"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex w-full flex-col items-center"
-                  >
-                    <p className="font-display text-2xl text-foreground">{th.scanPromptPay}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{th.autoUpdateOnPay}</p>
+             {state === "waiting" && (
+  <motion.div
+    key="waiting"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    className="flex w-full flex-col items-center"
+  >
+    <p className="font-display text-2xl text-foreground">
+      {th.scanPromptPay}
+    </p>
 
-                    <div className="relative mt-5 rounded-3xl bg-card p-4 shadow-[var(--shadow-glow)]">
-                      {starting ? (
-                        <div className="flex h-[300px] w-[300px] items-center justify-center rounded-2xl bg-secondary">
-                          <Loader2 size={56} className="animate-spin text-accent" />
-                        </div>
-                      ) : promptPayImage ? (
-                        <img
-                          src={promptPayImage}
-                          alt={th.promptPayQr}
-                          width={350}
-                          height={350}
-                          className="h-[300px] w-[300px] rounded-2xl bg-white"
-                        />
-                      ) : (
-                        <div className="flex h-[300px] w-[300px] items-center justify-center rounded-2xl bg-secondary p-8 text-sm font-bold text-destructive">
-                          {th.noPromptPayQr}
-                        </div>
-                      )}
-                    </div>
+    <p className="mt-1 text-sm text-muted-foreground">
+      {th.autoUpdateOnPay}
+    </p>
 
-                    <div className="mt-4 flex items-center gap-2 rounded-full bg-blush px-4 py-2">
-                      <Loader2 size={16} className="animate-spin text-accent" />
-                      <span className="text-sm font-semibold text-foreground">
-                        {th.waitingPayment(`${mm}:${ss}`)}
-                      </span>
-                    </div>
+    <div className="relative mt-5 rounded-3xl bg-card p-4 shadow-[var(--shadow-glow)]">
+      {starting ? (
+        <div className="flex h-[300px] w-[300px] items-center justify-center rounded-2xl bg-secondary">
+          <Loader2 size={56} className="animate-spin text-accent" />
+        </div>
+      ) : promptPayImage ? (
+        <img
+          src={promptPayImage}
+          alt={th.promptPayQr}
+          width={350}
+          height={350}
+          className="h-[300px] w-[300px] rounded-2xl bg-white"
+        />
+      ) : (
+        <div className="flex h-[300px] w-[300px] items-center justify-center rounded-2xl bg-secondary p-8 text-sm font-bold text-destructive">
+          {th.noPromptPayQr}
+        </div>
+      )}
+    </div>
 
-                    {(error || connectionError) && (
-                      <p className="mt-3 text-sm font-semibold text-destructive">
-                        {error ?? connectionError}
-                      </p>
-                    )}
-                  </motion.div>
-                )}
+    {(error || connectionError) && (
+      <p className="mt-3 text-sm font-semibold text-destructive">
+        {error ?? connectionError}
+      </p>
+    )}
+  </motion.div>
+)}
 
                 {state === "success" && (
                   <motion.div
