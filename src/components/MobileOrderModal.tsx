@@ -54,15 +54,20 @@ export function MobileOrderModal({
     : null;
 
   // 🟢 ลอจิกจับเวลานับถอยหลัง อิงจาก expires_at ของ API
-  useEffect(() => {
-    if (!open || !checkout?.expires_at) {
+useEffect(() => {
+    // 💡 1. ดึงค่าออกมาเก็บในตัวแปรก่อน
+    const expireTimeStr = checkout?.expires_at;
+
+    // 💡 2. ดัก if ด้วยตัวแปรนั้น 
+    // พอผ่านบรรทัดนี้ไปได้ TypeScript จะฟันธง 100% ว่า expireTimeStr เป็น string แน่นอน ไม่ใช่ undefined
+    if (!open || !expireTimeStr) {
       setTimeLeft(null);
       return;
     }
 
     const calculateRemaining = () => {
-      // คำนวณความต่างระหว่างเวลาหมดอายุ กับ เวลาปัจจุบัน
-      const diffMs = new Date(checkout.expires_at).getTime() - Date.now();
+      // 💡 3. เอาตัวแปรมาใช้แทน checkout.expires_at ตรงๆ
+      const diffMs = new Date(expireTimeStr).getTime() - Date.now();
       return Math.max(0, Math.floor(diffMs / 1000));
     };
 
@@ -74,7 +79,6 @@ export function MobileOrderModal({
       const remaining = calculateRemaining();
       setTimeLeft(remaining);
 
-      // ถ้าเวลาหมด ให้ปิดหน้าต่างอัตโนมัติ (หรือจะเรียก onCancel() ก็ได้ตามเหมาะสม)
       if (remaining <= 0) {
         clearInterval(timer);
         onClose(); 
@@ -83,7 +87,6 @@ export function MobileOrderModal({
 
     return () => clearInterval(timer);
   }, [open, checkout?.expires_at, onClose]);
-
   // ลอจิกตอนเปิด Modal เพื่อยิง API
   useEffect(() => {
     if (!open) {
