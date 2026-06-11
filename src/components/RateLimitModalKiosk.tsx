@@ -16,9 +16,10 @@ type Props = {
   onClose: () => void;
   /** Seconds to count down before re-enabling the retry button. Default: 30 */
   cooldownSeconds?: number;
+  onRetry: () => void; // <-- เพิ่มบรรทัดนี้
 };
 
-export function RateLimitModalKiosk({ open, onClose, cooldownSeconds = 30 }: Props) {
+export function RateLimitModalKiosk({ open, onClose, cooldownSeconds = 30, onRetry }: Props) {
   const { remaining, progress } = useRateLimitCountdown(open, cooldownSeconds);
 
   const radius = 54;
