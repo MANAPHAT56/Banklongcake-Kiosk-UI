@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, Wifi, QrCode, Loader2 } from "lucide-react";
+import { X, Smartphone, Wifi, QrCode, Loader2, Clock } from "lucide-react"; // 🟢 เพิ่ม Clock icon
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
 import { createMobileSession, cancelSessionKioskSwitch } from "@/lib/api/client";
@@ -22,6 +22,13 @@ function isSameTransaction(messageTransactionId: unknown, checkoutTransactionId:
   return Number(messageTransactionId) === Number(checkoutTransactionId);
 }
 
+// 🟢 ฟังก์ชันช่วยจัดรูปแบบเวลาให้เป็น MM:SS
+function formatCountdown(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
 export function MobileOrderModal({
   open,
   machineUuid,
@@ -35,6 +42,8 @@ export function MobileOrderModal({
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // 🟢 State เก็บเวลาที่เหลือ (วินาที)
+  
   const handledStatusRef = useRef<string | null>(null);
   const hasRequestedRef = useRef<boolean>(false);
   const transactionId = checkout?.transaction_id;
@@ -44,17 +53,38 @@ export function MobileOrderModal({
     ? rawStatus
     : null;
 
-  // 🟢 เพิ่มเฉพาะส่วนจับเวลา 1 นาทีแล้วสั่งปิดหน้าจอเมื่อเปิดค้างไว้
+  // 🟢 ลอจิกจับเวลานับถอยหลัง อิงจาก expires_at ของ API
   useEffect(() => {
-    if (!open) return;
+    if (!open || !checkout?.expires_at) {
+      setTimeLeft(null);
+      return;
+    }
 
-    const autoCloseTimer = setTimeout(() => {
-      onClose();
-    }, 60000); // 60000 มิลลิวินาที = 1 นาที
+    const calculateRemaining = () => {
+      // คำนวณความต่างระหว่างเวลาหมดอายุ กับ เวลาปัจจุบัน
+      const diffMs = new Date(checkout.expires_at).getTime() - Date.now();
+      return Math.max(0, Math.floor(diffMs / 1000));
+    };
 
-    return () => clearTimeout(autoCloseTimer);
-  }, [open, onClose]);
+    // ตั้งค่าเวลาเริ่มต้นทันทีที่ได้ข้อมูลมา
+    setTimeLeft(calculateRemaining());
 
+    // อัปเดตเวลาทุกๆ 1 วินาที
+    const timer = setInterval(() => {
+      const remaining = calculateRemaining();
+      setTimeLeft(remaining);
+
+      // ถ้าเวลาหมด ให้ปิดหน้าต่างอัตโนมัติ (หรือจะเรียก onCancel() ก็ได้ตามเหมาะสม)
+      if (remaining <= 0) {
+        clearInterval(timer);
+        onClose(); 
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [open, checkout?.expires_at, onClose]);
+
+  // ลอจิกตอนเปิด Modal เพื่อยิง API
   useEffect(() => {
     if (!open) {
       setCheckout(null);
@@ -95,6 +125,7 @@ export function MobileOrderModal({
     };
   }, [open, machineUuid, product, products]);
 
+  // ลอจิกจัดการ WebSocket Events
   useEffect(() => {
     if (!open || !product || !checkout || !paymentStatus) return;
     if (handledStatusRef.current === paymentStatus) return;
@@ -184,11 +215,23 @@ export function MobileOrderModal({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 rounded-full bg-blush px-4 py-2">
-                <Wifi size={16} className="text-accent" />
-                <span className="text-xs font-semibold text-foreground">
-                  {th.sessionInfo(transactionId ? String(transactionId) : null)}
-                </span>
+              {/* 🟢 ส่วนแสดงเวลานับถอยหลังแทนคำว่า ใช้ได้ 24 ชั่วโมง */}
+              <div className="flex items-center gap-3">
+                {timeLeft !== null && (
+                  <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
+                    <Clock size={16} />
+                    <span className="text-sm font-bold">
+                      ทำรายการภายใน: {formatCountdown(timeLeft)} นาที
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2">
+                  <Wifi size={16} className="text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {th.sessionInfo(transactionId ? String(transactionId) : null)}
+                  </span>
+                </div>
               </div>
 
               {(error || connectionError) && (
