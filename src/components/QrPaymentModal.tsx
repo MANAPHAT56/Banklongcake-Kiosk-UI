@@ -30,25 +30,7 @@ export function QrPaymentModal({
   onCancel,
   onRefresh,
 }: Props) {
-  const [seconds, setSeconds] = useState(300);
   const [successSeconds, setSuccessSeconds] = useState(10);
-
-  useEffect(() => {
-    if (!product || state !== "waiting") return;
-    setSeconds(300);
-    const id = window.setInterval(() => {
-      setSeconds((s) => {
-        if (s <= 1) {
-          window.clearInterval(id);
-          onCancel();
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [product, state, onCancel]);
-
   useEffect(() => {
     if (!product || state !== "success") return;
     setSuccessSeconds(10);
@@ -58,8 +40,6 @@ export function QrPaymentModal({
     return () => window.clearInterval(id);
   }, [product, state]);
 
-  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
-  const ss = String(seconds % 60).padStart(2, "0");
   const amount = checkout?.amount ?? product?.price ?? 0;
   const promptPayImage = checkout?.promptpay?.image_url_png ?? checkout?.promptpay?.image_url_svg;
 
