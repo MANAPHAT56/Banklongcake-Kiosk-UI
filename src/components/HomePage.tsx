@@ -199,7 +199,12 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         handledWsMessageRef.current = globalWs.lastMessage;
         pay.cancel();
       }
-    } 
+    }
+     else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
+  if (pay.product && pay.state === "waiting") {
+    handledWsMessageRef.current = globalWs.lastMessage;
+  }
+}
   }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
 
   const mobileProduct = products.find((p) => p.available) ?? null;
