@@ -88,7 +88,16 @@ export function payCheckoutForKiosk(transactionId: number) {
     method: "POST",
   });
 }
-
+export function cancelKioskSwitch(transactionId: number) {
+  return request<{ cancelled: boolean }>(
+    `/api/mobile/${encodeURIComponent(
+      String(transactionId),
+    )}/cancel-by-kiosk-switch`,
+    {
+      method: "POST",
+    },
+  );
+}
 export function mockPayCheckoutForKiosk(transactionId: number) {
   return request<{ mock: boolean; payment_status: string; transaction_id: number }>(
     `/api/checkout/transactions/${encodeURIComponent(String(transactionId))}/mock-pay`,

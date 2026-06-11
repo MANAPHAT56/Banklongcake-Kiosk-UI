@@ -4,7 +4,7 @@ import { Check, Home, Loader2, RefreshCw, X } from "lucide-react";
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
 import { th } from "@/i18n/th";
-
+import {cancelKioskSwitch} from "@/lib/api/client";
 export type PayState = "waiting" | "success" | "dispensing" | "complete";
 
 type Props = {
@@ -14,9 +14,11 @@ type Props = {
   starting?: boolean;
   error?: string | null;
   connectionError?: string | null;
+      transactionId?: number | null;
   onClose: () => void;
   onCancel: () => void;
   onRefresh: () => void;
+
 };
 
 export function QrPaymentModal({
@@ -29,6 +31,7 @@ export function QrPaymentModal({
   onClose,
   onCancel,
   onRefresh,
+    transactionId,
 }: Props) {
   const [successSeconds, setSuccessSeconds] = useState(10);
   useEffect(() => {
@@ -42,7 +45,20 @@ export function QrPaymentModal({
 
   const amount = checkout?.amount ?? product?.price ?? 0;
   const promptPayImage = checkout?.promptpay?.image_url_png ?? checkout?.promptpay?.image_url_svg;
+async function handleClose() {
+  try {
+    if (
+      state === "waiting" &&
+      transactionId
+    ) {
+      await cancelKioskSwitch(
+        transactionId,
+      );
+    }
+  } catch {}
 
+  onClose();
+}
   return (
     <AnimatePresence>
       {product && (
@@ -63,7 +79,7 @@ export function QrPaymentModal({
             {/* ปุ่มกากบาทที่เพิ่ม onCancel เข้าไปร่วมกับ onClose */}
             <button
               onClick={() => {
-                onClose();
+                handleClose();
               }}
               aria-label={th.closePayment}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"

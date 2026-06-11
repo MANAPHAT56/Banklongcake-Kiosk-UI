@@ -266,6 +266,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         }}
         onCancel={pay.cancel}
         onRefresh={pay.refresh}
+          transactionId={pay.checkout?.transaction_id}
       />
 
 <RateLimitModalKiosk
