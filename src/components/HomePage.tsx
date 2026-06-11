@@ -98,6 +98,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
   const slots = useMachineSlots(activeMachineUuid);
   const pay = usePaymentFlow(activeMachineUuid);
   const globalWs = useWs();
+  const { resetPaymentStatus } = globalWs;
 
   const products = useMemo<Product[]>(() => {
     if (!slots.data?.slots.length) return fallbackProducts;
@@ -135,6 +136,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
           };
           setMobileOpen(false);
           pay.startFromCheckout(product, fakeCheckout);
+          resetPaymentStatus();
         }
       }
     } else if (globalWs.paymentStatus === "SWITCH_TO_KIOSK") {
@@ -159,6 +161,7 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
           };
           setMobileOpen(false);
           pay.startFromCheckout(product, fakeCheckout);
+          resetPaymentStatus();
         }
       }
     } else if (globalWs.paymentStatus === "SUCCEEDED" && globalWs.lastMessage) {
@@ -193,22 +196,24 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         }
 
         setMobileOpen(false);
+        resetPaymentStatus();
       }
     } else if (
-  globalWs.paymentStatus === "CANCELLED" &&
-  msg.transaction_id === pay.checkout?.transaction_id
-) {
-  if (pay.product && pay.state === "waiting") {
-    handledWsMessageRef.current = globalWs.lastMessage;
-    pay.cancel();
-  }
-}
-     else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
-  if (pay.product && pay.state === "waiting") {
-    handledWsMessageRef.current = globalWs.lastMessage;
-  }
-}
-  }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay]);
+      globalWs.paymentStatus === "CANCELLED" &&
+      msg.transaction_id === pay.checkout?.transaction_id
+    ) {
+      if (pay.product && pay.state === "waiting") {
+        handledWsMessageRef.current = globalWs.lastMessage;
+        pay.cancel();
+        resetPaymentStatus();
+      }
+    } else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
+      if (pay.product && pay.state === "waiting") {
+        handledWsMessageRef.current = globalWs.lastMessage;
+        resetPaymentStatus();
+      }
+    }
+  }, [globalWs.paymentStatus, globalWs.lastMessage, products, pay, resetPaymentStatus]);
 
   const mobileProduct = products.find((p) => p.available) ?? null;
 
@@ -237,25 +242,25 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         }}
       />
 
-     <MobileOrderModal
-  open={mobileOpen}
-  machineUuid={machineUuid}
-  product={mobileProduct}
-  products={products}
-  onClose={() => setMobileOpen(false)}
-  onCancel={() => { pay.cancel(); setMobileOpen(false); }}  
-  onPayAtKiosk={(product, checkout) => {
-    setMobileOpen(false);
-    pay.startFromCheckout(product, checkout);
-  }}
-  onMobilePaid={(product, checkout) => {
-    setMobileOpen(false);
-    if (pay.checkout?.transaction_id !== checkout.transaction_id) {
-      pay.startFromCheckout(product, checkout);
-      pay.simulatePaid();
-    }
-  }}
-/>
+      <MobileOrderModal
+        open={mobileOpen}
+        machineUuid={machineUuid}
+        product={mobileProduct}
+        products={products}
+        onClose={() => setMobileOpen(false)}
+        onCancel={() => { pay.cancel(); setMobileOpen(false); }}
+        onPayAtKiosk={(product, checkout) => {
+          setMobileOpen(false);
+          pay.startFromCheckout(product, checkout);
+        }}
+        onMobilePaid={(product, checkout) => {
+          setMobileOpen(false);
+          if (pay.checkout?.transaction_id !== checkout.transaction_id) {
+            pay.startFromCheckout(product, checkout);
+            pay.simulatePaid();
+          }
+        }}
+      />
 
       <QrPaymentModal
         product={pay.product}
@@ -270,18 +275,19 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
         }}
         onCancel={pay.cancel}
         onRefresh={pay.refresh}
-          transactionId={pay.checkout?.transaction_id}
+        transactionId={pay.checkout?.transaction_id}
       />
 
-<RateLimitModalKiosk
-  open={pay.rateLimited}
-  onClose={() => pay.reset()}
-  onRetry={() => {
-    pay.clearRateLimit();
-    if (pay.product) void pay.start(pay.product);
-  }}
-  cooldownSeconds={pay.rateLimitRetryAfter}
-/>
+      <RateLimitModalKiosk
+        open={pay.rateLimited}
+        onClose={() => pay.reset()}
+        onRetry={() => {
+          pay.clearRateLimit();
+          if (pay.product) void pay.start(pay.product);
+        }}
+        cooldownSeconds={pay.rateLimitRetryAfter}
+      />
+
       {isMachineUnavailable && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md">
           <div className="mx-8 w-full max-w-lg rounded-3xl border-2 border-secondary bg-card px-12 py-14 text-center shadow-card">

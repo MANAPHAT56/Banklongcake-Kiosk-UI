@@ -39,9 +39,8 @@ export function usePaymentFlow(machineUuid: string | null) {
   const [rateLimitRetryAfter, setRateLimitRetryAfter] = useState(30);
   const requestRef = useRef(0);
 
-  const { paymentStatus: rawStatus, connectionError, lastMessage } = useWs();
+  const { paymentStatus: rawStatus, connectionError, lastMessage, resetPaymentStatus } = useWs();
 
-  // กรอง paymentStatus ให้ตรงกับ transaction ปัจจุบันเท่านั้น
   const isRelevantMessage =
     !checkout?.transaction_id ||
     isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id);
@@ -189,18 +188,18 @@ export function usePaymentFlow(machineUuid: string | null) {
   useEffect(() => {
     if (paymentStatus === "SUCCEEDED") {
       setState("success");
+      resetPaymentStatus();
     }
 
     if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
-      // guard: ต้องเป็น transaction เดียวกันเท่านั้นถึงจะ cancel ได้
       if (!checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)) {
         setError(th.paymentNotCompleted);
         cancel();
+        resetPaymentStatus();
       }
     }
 
     if (paymentStatus === "KIOSK_SWITCH_CANCELLED") {
-      // guard เดียวกัน
       if (!checkout?.transaction_id || isSameTransaction(lastMessage?.transaction_id, checkout.transaction_id)) {
         requestRef.current += 1;
         setProduct(null);
@@ -210,9 +209,10 @@ export function usePaymentFlow(machineUuid: string | null) {
         setStarting(false);
         setRateLimited(false);
         setRateLimitRetryAfter(30);
+        resetPaymentStatus();
       }
     }
-  }, [paymentStatus, lastMessage, checkout, cancel]);
+  }, [paymentStatus, lastMessage, checkout, cancel, resetPaymentStatus]);
 
   useEffect(() => {
     if (!checkout?.transaction_id || state !== "waiting") return;

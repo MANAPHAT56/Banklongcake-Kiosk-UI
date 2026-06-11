@@ -1,5 +1,4 @@
-// usePaymentWebSocket.ts
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchTransactionState, getPaymentWebSocketUrl } from "@/lib/api/client";
 import { th } from "@/i18n/th";
 
@@ -34,7 +33,11 @@ export function usePaymentWebSocket(
   const [lastMessage, setLastMessage] = useState<any | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const latestVersionRef = useRef(0);
-  const versionOwnerRef = useRef<number | null>(null); // 🆕 track ว่า version นี้เป็นของ transaction ไหน
+  const versionOwnerRef = useRef<number | null>(null);
+
+  const resetPaymentStatus = useCallback(() => {
+    setPaymentStatus(null);
+  }, []);
 
   useEffect(() => {
     if (!enabled || !machineUuid) {
@@ -56,7 +59,6 @@ export function usePaymentWebSocket(
             if (closed) return;
             const state = res.state;
             if (state) {
-              // 🆕 reset version ref ถ้าเป็น transaction ใหม่
               if (versionOwnerRef.current !== transactionId) {
                 versionOwnerRef.current = transactionId;
                 latestVersionRef.current = 0;
@@ -66,7 +68,7 @@ export function usePaymentWebSocket(
 
               const status = normalizePaymentStatus(state.status);
 
-              if (state.paymentChannel === 'kiosk' && state.status === 'awaiting_payment') {
+              if (state.paymentChannel === "kiosk" && state.status === "awaiting_payment") {
                 setPaymentStatus("SWITCH_TO_KIOSK");
               } else if (status && TERMINAL_STATUSES.has(status)) {
                 setPaymentStatus(status);
@@ -100,11 +102,13 @@ export function usePaymentWebSocket(
       ws.onopen = () => {
         if (closed) return;
         setConnectionError(null);
-        ws.send(JSON.stringify({
-          action: "subscribe",
-          machine_uuid: machineUuid,
-          transaction_id: transactionId,
-        }));
+        ws.send(
+          JSON.stringify({
+            action: "subscribe",
+            machine_uuid: machineUuid,
+            transaction_id: transactionId,
+          })
+        );
         startHeartbeat(ws);
       };
 
@@ -127,11 +131,9 @@ export function usePaymentWebSocket(
 
         if (message.type === "pong") return;
 
-        // 🆕 version deduplication แบบ scope ต่อ transaction
         if (message.version != null) {
           const msgTxId = message.transaction_id ?? null;
           if (msgTxId !== null && versionOwnerRef.current !== msgTxId) {
-            // เปลี่ยน transaction → reset version
             versionOwnerRef.current = msgTxId;
             latestVersionRef.current = 0;
           }
@@ -171,7 +173,10 @@ export function usePaymentWebSocket(
           return;
         }
 
-        if ((message.type === "SESSION_INVALIDATED" || message.type === "PAYMENT_INVALIDATED") && isTargetTransaction) {
+        if (
+          (message.type === "SESSION_INVALIDATED" || message.type === "PAYMENT_INVALIDATED") &&
+          isTargetTransaction
+        ) {
           setPaymentStatus("INVALIDATED");
           setConnectionError(null);
           return;
@@ -216,12 +221,16 @@ export function usePaymentWebSocket(
       closed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      if (
+        wsRef.current &&
+        (wsRef.current.readyState === WebSocket.OPEN ||
+          wsRef.current.readyState === WebSocket.CONNECTING)
+      ) {
         wsRef.current.close();
       }
       wsRef.current = null;
     };
   }, [transactionId, enabled, machineUuid]);
 
-  return { paymentStatus, connectionError, lastMessage };
+  return { paymentStatus, connectionError, lastMessage, resetPaymentStatus };
 }
