@@ -229,15 +229,11 @@ useEffect(() => {
                   <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
                     <Clock size={16} />
                     <span className="text-sm font-bold">
-                      {/* ตัดข้อความ "ทำรายการภายใน" ออกหรือปรับตามต้องการ */}
-                      {formatCountdown(timeLeft)}
+                      ทำรายการภายในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
                     </span>
                   </div>
                 )}
                 
-                {/* 🟢 ลบส่วน Wifi icon และ th.sessionInfo(transactionId...) ออกไปแล้ว
-                   ถ้าต้องการให้มันยังวางตำแหน่งสวยงาม อาจจะใช้แค่เงื่อนไขเช็กว่ามี transactionId ก็พอ 
-                */}
               </div>
 
               {(error || connectionError) && (
