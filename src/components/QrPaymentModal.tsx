@@ -114,7 +114,7 @@ export function QrPaymentModal({
             <div className="flex flex-col items-center justify-center gap-4 bg-secondary/40 p-8">
               <div className="aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl bg-card">
                 <img
-                  src={product.image}
+                  src={product.imageUrl}
                   alt={product.name}
                   className="h-full w-full object-cover"
                 />
