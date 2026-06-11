@@ -194,12 +194,15 @@ function HomePageInner({ machineUuid, activeMachineUuid, authError }: InnerProps
 
         setMobileOpen(false);
       }
-    } else if (globalWs.paymentStatus === "CANCELLED" && globalWs.lastMessage) {
-      if (pay.product && pay.state === "waiting") {
-        handledWsMessageRef.current = globalWs.lastMessage;
-        pay.cancel();
-      }
-    }
+    } else if (
+  globalWs.paymentStatus === "CANCELLED" &&
+  msg.transaction_id === pay.checkout?.transaction_id
+) {
+  if (pay.product && pay.state === "waiting") {
+    handledWsMessageRef.current = globalWs.lastMessage;
+    pay.cancel();
+  }
+}
      else if (globalWs.paymentStatus === "KIOSK_SWITCH_CANCELLED" && globalWs.lastMessage) {
   if (pay.product && pay.state === "waiting") {
     handledWsMessageRef.current = globalWs.lastMessage;
