@@ -44,6 +44,17 @@ export function MobileOrderModal({
     ? rawStatus
     : null;
 
+  // 🟢 เพิ่มเฉพาะส่วนจับเวลา 1 นาทีแล้วสั่งปิดหน้าจอเมื่อเปิดค้างไว้
+  useEffect(() => {
+    if (!open) return;
+
+    const autoCloseTimer = setTimeout(() => {
+      onClose();
+    }, 60000); // 60000 มิลลิวินาที = 1 นาที
+
+    return () => clearTimeout(autoCloseTimer);
+  }, [open, onClose]);
+
   useEffect(() => {
     if (!open) {
       setCheckout(null);

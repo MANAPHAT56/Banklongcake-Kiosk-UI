@@ -55,6 +55,17 @@ export function QrPaymentModal({
     onClose();
   }
 
+  // 🟢 เพิ่มส่วนนี้: ระบบ Auto Close 2 นาทีเมื่อเปิดหน้าจอรอชำระเงินค้างไว้
+  useEffect(() => {
+    if (!product || state !== "waiting") return;
+
+    const autoCloseTimer = setTimeout(() => {
+      handleClose();
+    }, 120000); // 120000 มิลลิวินาที = 2 นาที
+
+    return () => clearTimeout(autoCloseTimer);
+  }, [product, state, transactionId, onClose]);
+
   return (
     <AnimatePresence>
       {product && (

@@ -11,11 +11,25 @@ type Props = {
 };
 
 export function ProductDetailModal({ product, onClose, onBuy }: Props) {
+  // 1. ดักจับการกดปุ่ม Escape (โค้ดเดิม)
   useEffect(() => {
     if (!product) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [product, onClose]);
+
+  // 🟢 2. เพิ่มเติม: ตั้งเวลาปิดหน้าต่างอัตโนมัติภายใน 15 วินาที
+  useEffect(() => {
+    if (!product) return;
+
+    // ตั้งเวลา 15 วินาที แล้วสั่งปิด
+    const autoCloseTimer = setTimeout(() => {
+      onClose();
+    }, 15000); // 15000 มิลลิวินาที = 15 วินาที
+
+    // เคลียร์ Timer ทันทีถ้า Modal ถูกปิด หรือเปลี่ยนสินค้า ก่อนครบ 15 วินาที
+    return () => clearTimeout(autoCloseTimer);
   }, [product, onClose]);
 
   return (
