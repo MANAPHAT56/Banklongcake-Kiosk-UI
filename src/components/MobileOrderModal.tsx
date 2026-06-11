@@ -6,14 +6,13 @@ import type { CheckoutResult } from "@/types/kiosk";
 import { createMobileSession,  cancelSessionKioskSwitch,} from "@/lib/api/client";
 import { useWs } from "./WsContext";
 import { th } from "@/i18n/th";
-import { usePaymentFlow } from "@/hooks/usePaymentFlow";
+
 type Props = {
   open: boolean;
   machineUuid: string | null;
   product: Product | null;
   products: Product[];
   onClose: () => void;
-  onCancel: () => void; // ← เพิ่ม: เรียก cancel จาก usePaymentFlow
   onPayAtKiosk: (product: Product, checkout: CheckoutResult) => void;
   onMobilePaid: (product: Product, checkout: CheckoutResult) => void;
 };
@@ -28,7 +27,6 @@ export function MobileOrderModal({
   product,
   products,
   onClose,
-  onCancel,
   onPayAtKiosk,
   onMobilePaid,
 }: Props) {
@@ -119,11 +117,6 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
       )}&color=FF5C93&bgcolor=FFFFFF`
     : "";
 
-  function handleClose() {
-    onCancel(); // cancel usePaymentFlow ก่อน
-    onClose();  // แล้วค่อยปิด modal
-  }
-
   return (
     <AnimatePresence>
       {open && (
@@ -142,7 +135,7 @@ const paymentStatus = !transactionId || isSameTransaction(lastMessage?.transacti
             className="relative grid h-[92%] w-[92%] grid-cols-[1.1fr_0.9fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
-              onClick={handleClose}
+               onClick={onClose}
               aria-label={th.close}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
