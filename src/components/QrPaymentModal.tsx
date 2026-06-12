@@ -93,26 +93,27 @@ export function QrPaymentModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-md"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="relative grid w-[min(960px,92vw)] grid-cols-1 overflow-hidden rounded-3xl bg-background shadow-2xl md:grid-cols-2"
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="relative grid w-[min(1200px,95vw)] min-h-[600px] grid-cols-1 overflow-hidden rounded-[2.5rem] bg-background shadow-2xl md:grid-cols-2"
           >
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="absolute right-4 top-4 z-10 rounded-full bg-card/80 p-2 text-muted-foreground hover:bg-card"
+              className="absolute right-6 top-6 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-card/90 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-card hover:text-foreground"
               aria-label="close"
             >
-              <X className="h-5 w-5" />
+              <X className="h-7 w-7" />
             </button>
 
             {/* ── Left panel: product info ── */}
-            <div className="flex flex-col items-center justify-center gap-4 bg-secondary/40 p-8">
-              <div className="aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl bg-card">
+            <div className="flex flex-col items-center justify-center gap-8 bg-secondary/40 p-12">
+              <div className="aspect-square w-full max-w-[340px] overflow-hidden rounded-[2rem] bg-card shadow-sm">
                 <img
                   src={product.imageUrl}
                   alt={product.name}
@@ -121,18 +122,18 @@ export function QrPaymentModal({
               </div>
 
               <div className="w-full text-center">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                <div className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
                   {th.selectedItem}
                 </div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">
+                <div className="mt-3 line-clamp-2 text-3xl font-bold text-foreground">
                   {product.name}
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-xs text-muted-foreground">
+                <div className="mt-8">
+                  <div className="text-sm font-medium text-muted-foreground">
                     {th.paymentAmount}
                   </div>
-                  <div className="text-3xl font-bold text-primary">
+                  <div className="mt-1 text-5xl font-extrabold text-primary">
                     ฿{amount}
                   </div>
                 </div>
@@ -140,27 +141,27 @@ export function QrPaymentModal({
             </div>
 
             {/* ── Right panel: QR / success ── */}
-            <div className="flex flex-col items-center justify-center gap-4 p-8">
+            <div className="flex flex-col items-center justify-center gap-6 p-12">
               <AnimatePresence mode="wait">
                 {state === "waiting" && (
                   <motion.div
                     key="waiting"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="flex w-full flex-col items-center gap-3"
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex w-full flex-col items-center gap-4"
                   >
-                    <h2 className="text-xl font-semibold text-foreground">
+                    <h2 className="text-3xl font-bold text-foreground">
                       {th.scanPromptPay}
                     </h2>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-base text-muted-foreground">
                       {th.autoUpdateOnPay}
                     </p>
 
                     {/* QR box */}
-                    <div className="flex aspect-square w-full max-w-[260px] items-center justify-center rounded-2xl border bg-card p-3">
+                    <div className="mt-4 flex aspect-square w-full max-w-[360px] items-center justify-center rounded-[2rem] border bg-card p-5 shadow-sm">
                       {starting ? (
-                        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                        <Loader2 className="h-16 w-16 animate-spin text-muted-foreground" />
                       ) : promptPayImage ? (
                         <img
                           src={promptPayImage}
@@ -168,7 +169,7 @@ export function QrPaymentModal({
                           className="h-full w-full object-contain"
                         />
                       ) : (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-base font-medium text-muted-foreground">
                           {th.noPromptPayQr}
                         </span>
                       )}
@@ -176,21 +177,21 @@ export function QrPaymentModal({
 
                     {/* ⏱️ countdown 2 นาที */}
                     <div
-                      className={`mt-1 text-center text-sm font-medium tabular-nums transition-colors ${
+                      className={`mt-4 text-center text-lg font-medium tabular-nums transition-colors ${
                         isUrgent
-                          ? "text-destructive animate-pulse"
+                          ? "animate-pulse text-destructive"
                           : "text-muted-foreground"
                       }`}
                     >
                       กรุณาชำระเงินภายใน{" "}
-                      <span className="font-semibold">
+                      <span className="font-bold">
                         {mm}:{ss}
                       </span>{" "}
                       นาที
                     </div>
 
                     {(error || connectionError) && (
-                      <div className="mt-1 text-sm text-destructive">
+                      <div className="mt-2 text-base font-semibold text-destructive">
                         {error ?? connectionError}
                       </div>
                     )}
@@ -200,27 +201,30 @@ export function QrPaymentModal({
                 {state === "success" && (
                   <motion.div
                     key="success"
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex flex-col items-center gap-3 text-center"
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    className="flex flex-col items-center gap-5 text-center"
                   >
-                    <div className="rounded-full bg-primary/10 p-4">
-                      <Check className="h-10 w-10 text-primary" />
+                    <div className="flex h-32 w-32 items-center justify-center rounded-full bg-primary/10">
+                      <Check className="h-16 w-16 text-primary" strokeWidth={3} />
                     </div>
-                    <div className="text-xl font-semibold text-foreground">
+                    <div className="mt-4 text-3xl font-bold text-foreground">
                       {th.paymentSuccess}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-lg font-medium text-muted-foreground">
                       {th.dispensingReturn(successSeconds)}
                     </div>
-                    <ActionButton
-                      onClick={onClose}
-                      icon={<Home className="h-4 w-4" />}
-                      variant="primary"
-                    >
-                      {th.backHome}
-                    </ActionButton>
+                    <div className="mt-4">
+                      <ActionButton
+                        onClick={onClose}
+                        icon={<Home className="h-5 w-5" />}
+                        variant="primary"
+                      >
+                        {th.backHome}
+                      </ActionButton>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -252,10 +256,11 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-transform hover:scale-[1.02] ${styles}`}
+      className={`inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-bold transition-transform hover:scale-[1.02] active:scale-95 ${styles}`}
     >
       {icon}
       {children}
     </button>
   );
 }
+
