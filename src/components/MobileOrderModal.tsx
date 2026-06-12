@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, Wifi, QrCode, Loader2, Clock } from "lucide-react";
+import { X, Smartphone, Wifi, QrCode, Loader2, Clock } from "lucide-react"; // 🟢 เพิ่ม Clock icon
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
 import { createMobileSession, cancelSessionKioskSwitch } from "@/lib/api/client";
@@ -29,8 +29,6 @@ function formatCountdown(totalSeconds: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-const WAITING_TIMEOUT_SECONDS = 120; // 🟢 ตั้งค่า 2 นาที
-
 export function MobileOrderModal({
   open,
   machineUuid,
@@ -44,7 +42,7 @@ export function MobileOrderModal({
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(WAITING_TIMEOUT_SECONDS); 
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // 🟢 State เก็บเวลาที่เหลือ (วินาที)
   
   const handledStatusRef = useRef<string | null>(null);
   const hasRequestedRef = useRef<boolean>(false);
@@ -55,37 +53,45 @@ export function MobileOrderModal({
     ? rawStatus
     : null;
 
-  // 🟢 ฟังก์ชันปิดหน้าต่างและยกเลิกคิวใน API
-  async function handleClose() {
-    try {
-      if (transactionId) {
-        await cancelSessionKioskSwitch(transactionId);
+  // 🟢 ลอจิกจับเวลานับถอยหลัง อิงจาก expires_at ของ API
+useEffect(() => {
+    const expireTimeStr = checkout?.expires_at;
+
+    // 💡 ปรับการเช็ก: นอกจากเช็กว่ามีค่าไหม ต้องเช็กว่าเป็น string ด้วย
+    if (!open || typeof expireTimeStr !== 'string') {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calculateRemaining = () => {
+      // 💡 เพิ่มการตรวจสอบก่อนแปลงเป็น Date
+      const targetDate = new Date(expireTimeStr);
+      
+      // ถ้าวันที่ไม่ถูกต้อง (Invalid Date) ให้รีเทิร์น 0 หรือจัดการตามเหมาะสม
+      if (isNaN(targetDate.getTime())) {
+        console.error("Invalid date format from API:", expireTimeStr);
+        return 0;
       }
-    } catch {}
-    onClose();
-  }
 
-  // 🟢 ลอจิกนับถอยหลัง 2 นาที คงที่
-  useEffect(() => {
-    if (!open || !checkout) return;
+      const diffMs = targetDate.getTime() - Date.now();
+      return Math.max(0, Math.floor(diffMs / 1000));
+    };
 
-    setTimeLeft(WAITING_TIMEOUT_SECONDS);
+    // ตั้งค่าเวลาเริ่มต้น
+    setTimeLeft(calculateRemaining());
 
-    const timer = window.setInterval(() => {
-      setTimeLeft((s) => Math.max(0, s - 1));
+    const timer = setInterval(() => {
+      const remaining = calculateRemaining();
+      setTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(timer);
+        onClose(); 
+      }
     }, 1000);
 
-    const autoCloseTimer = window.setTimeout(() => {
-      handleClose();
-    }, WAITING_TIMEOUT_SECONDS * 1000);
-
-    return () => {
-      window.clearInterval(timer);
-      window.clearTimeout(autoCloseTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, checkout, transactionId]);
-
+    return () => clearInterval(timer);
+  }, [open, checkout?.expires_at, onClose]);
   // ลอจิกตอนเปิด Modal เพื่อยิง API
   useEffect(() => {
     if (!open) {
@@ -180,7 +186,9 @@ export function MobileOrderModal({
             className="relative grid h-[92%] w-[92%] grid-cols-[1.1fr_0.9fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
-              onClick={handleClose}
+              onClick={() => {
+                onClose();
+              }}
               aria-label={th.close}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
@@ -215,20 +223,17 @@ export function MobileOrderModal({
                 )}
               </div>
 
-              {/* 🟢 ส่วนแสดงเวลานับถอยหลัง */}
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
-                    timeLeft <= 30
-                      ? "bg-destructive/10 text-destructive animate-pulse"
-                      : "bg-blush text-accent"
-                  }`}
-                >
-                  <Clock size={16} />
-                  <span className="text-sm font-bold tabular-nums">
-                    กรุณาทำรายการในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
-                  </span>
-                </div>
+              {/* 🟢 ส่วนแสดงเวลานับถอยหลังแทนคำว่า ใช้ได้ 24 ชั่วโมง */}
+          <div className="flex items-center gap-3">
+                {timeLeft !== null && (
+                  <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
+                    <Clock size={16} />
+                    <span className="text-sm font-bold">
+                      กรุณาทำรายการในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
+                    </span>
+                  </div>
+                )}
+                
               </div>
 
               {(error || connectionError) && (
@@ -271,4 +276,3 @@ export function MobileOrderModal({
     </AnimatePresence>
   );
 }
-
