@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Smartphone, Wifi, QrCode, Loader2, Clock } from "lucide-react"; // 🟢 เพิ่ม Clock icon
+import { X, Smartphone, Wifi, QrCode, Loader2, Clock } from "lucide-react";
 import type { Product } from "@/data/products";
 import type { CheckoutResult } from "@/types/kiosk";
 import { createMobileSession, cancelSessionKioskSwitch } from "@/lib/api/client";
@@ -22,12 +22,15 @@ function isSameTransaction(messageTransactionId: unknown, checkoutTransactionId:
   return Number(messageTransactionId) === Number(checkoutTransactionId);
 }
 
-// 🟢 ฟังก์ชันช่วยจัดรูปแบบเวลาให้เป็น MM:SS
+// ฟังก์ชันช่วยจัดรูปแบบเวลาให้เป็น MM:SS
 function formatCountdown(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
+
+// เวลาที่เครื่องจะรอลูกค้าก่อนปิดหน้าต่าง (เดินหนี) = 2 นาที
+const IDLE_TIMEOUT_MS = 120 * 1000; 
 
 export function MobileOrderModal({
   open,
@@ -42,7 +45,7 @@ export function MobileOrderModal({
   const [checkout, setCheckout] = useState<CheckoutResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // 🟢 State เก็บเวลาที่เหลือ (วินาที)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); 
   
   const handledStatusRef = useRef<string | null>(null);
   const hasRequestedRef = useRef<boolean>(false);
@@ -53,45 +56,64 @@ export function MobileOrderModal({
     ? rawStatus
     : null;
 
-  // 🟢 ลอจิกจับเวลานับถอยหลัง อิงจาก expires_at ของ API
-useEffect(() => {
+  // ฟังก์ชันปิดหน้าต่างและยกเลิกคิว
+  async function handleClose() {
+    try {
+      if (transactionId) {
+        await cancelSessionKioskSwitch(transactionId);
+      }
+    } catch {}
+    onClose();
+  }
+
+  // 1️⃣ เวลาซ่อนสำหรับปิดหน้าอัตโนมัติ 2 นาที (กรณีลูกค้าเปิดแล้วเดินหนี)
+  useEffect(() => {
+    if (!open) return;
+
+    const idleTimer = window.setTimeout(() => {
+      handleClose();
+    }, IDLE_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(idleTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, transactionId]);
+
+  // 2️⃣ เวลานับถอยหลังที่แสดงบนหน้าจอ (ดึงจาก API expires_at)
+  useEffect(() => {
     const expireTimeStr = checkout?.expires_at;
 
-    // 💡 ปรับการเช็ก: นอกจากเช็กว่ามีค่าไหม ต้องเช็กว่าเป็น string ด้วย
     if (!open || typeof expireTimeStr !== 'string') {
       setTimeLeft(null);
       return;
     }
 
     const calculateRemaining = () => {
-      // 💡 เพิ่มการตรวจสอบก่อนแปลงเป็น Date
       const targetDate = new Date(expireTimeStr);
-      
-      // ถ้าวันที่ไม่ถูกต้อง (Invalid Date) ให้รีเทิร์น 0 หรือจัดการตามเหมาะสม
       if (isNaN(targetDate.getTime())) {
-        console.error("Invalid date format from API:", expireTimeStr);
         return 0;
       }
-
       const diffMs = targetDate.getTime() - Date.now();
       return Math.max(0, Math.floor(diffMs / 1000));
     };
 
-    // ตั้งค่าเวลาเริ่มต้น
     setTimeLeft(calculateRemaining());
 
-    const timer = setInterval(() => {
+    const displayTimer = window.setInterval(() => {
       const remaining = calculateRemaining();
       setTimeLeft(remaining);
 
       if (remaining <= 0) {
-        clearInterval(timer);
-        onClose(); 
+        window.clearInterval(displayTimer);
+        handleClose(); 
       }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [open, checkout?.expires_at, onClose]);
+    return () => window.clearInterval(displayTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, checkout?.expires_at]);
+
   // ลอจิกตอนเปิด Modal เพื่อยิง API
   useEffect(() => {
     if (!open) {
@@ -186,9 +208,7 @@ useEffect(() => {
             className="relative grid h-[92%] w-[92%] grid-cols-[1.1fr_0.9fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
-              onClick={() => {
-                onClose();
-              }}
+              onClick={handleClose}
               aria-label={th.close}
               className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
@@ -223,17 +243,22 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* 🟢 ส่วนแสดงเวลานับถอยหลังแทนคำว่า ใช้ได้ 24 ชั่วโมง */}
-          <div className="flex items-center gap-3">
+              {/* เวลาแสดงผลที่ดึงจาก API เท่านั้น */}
+              <div className="flex items-center gap-3">
                 {timeLeft !== null && (
-                  <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${timeLeft <= 60 ? 'bg-destructive/10 text-destructive' : 'bg-blush text-accent'}`}>
+                  <div
+                    className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
+                      timeLeft <= 60
+                        ? "bg-destructive/10 text-destructive animate-pulse"
+                        : "bg-blush text-accent"
+                    }`}
+                  >
                     <Clock size={16} />
-                    <span className="text-sm font-bold">
+                    <span className="text-sm font-bold tabular-nums">
                       กรุณาทำรายการในเว็บไซต์ภายใน: {formatCountdown(timeLeft)} นาที
                     </span>
                   </div>
                 )}
-                
               </div>
 
               {(error || connectionError) && (
@@ -276,3 +301,4 @@ useEffect(() => {
     </AnimatePresence>
   );
 }
+
