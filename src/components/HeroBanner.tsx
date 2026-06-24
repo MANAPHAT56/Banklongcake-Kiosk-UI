@@ -55,15 +55,6 @@ export function HeroBanner({ onMobileOrder }: { onMobileOrder?: () => void }) {
           <Sparkles size={16} className="text-accent" />
           <span className="text-sm font-bold text-foreground">{th.freshDaily}</span>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-2 text-primary-foreground shadow-[var(--shadow-soft)]"
-        >
-          <Clock size={16} />
-          <span className="text-sm font-bold">{th.open24h}</span>
-        </motion.div>
       </div>
     </header>
   );
