@@ -49,30 +49,32 @@ export function ProductDetailModal({ product, onClose, onBuy }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
-            className="relative grid h-[85%] w-[85%] grid-cols-[1.1fr_1fr] overflow-hidden rounded-[2rem] bg-card shadow-[var(--shadow-glow)]"
+            className="relative flex max-h-[90%] w-[90%] max-w-2xl flex-col overflow-hidden rounded-[2.5rem] bg-card shadow-[var(--shadow-glow)]"
           >
             <button
               onClick={onClose}
               aria-label={th.close}
-              className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
+              className="absolute right-5 top-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-card/90 backdrop-blur text-foreground shadow-[var(--shadow-card)] transition hover:bg-secondary active:scale-95"
             >
               <X size={28} strokeWidth={2.5} />
             </button>
 
-            <div className="relative overflow-hidden bg-secondary">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-              {product.tag && (
-                <span className="absolute left-5 top-5 rounded-full bg-accent px-4 py-1.5 text-sm font-bold text-accent-foreground shadow-lg">
-                  {product.tag}
-                </span>
-              )}
+            <div className="relative shrink-0 p-6 pb-2">
+              <div className="relative h-[38vh] min-h-[260px] w-full overflow-hidden rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-black/5">
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
+                {product.tag && (
+                  <span className="absolute left-5 top-5 rounded-full bg-accent px-4 py-1.5 text-sm font-bold text-accent-foreground shadow-lg">
+                    {product.tag}
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex min-h-0 flex-col gap-4 p-7">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 p-8 pt-4">
               <div className="min-h-0 flex-1 overflow-y-auto pr-2 scrollbar-hide">
                 <p className="text-sm font-semibold uppercase tracking-wider text-accent">
                   {th.premium}
