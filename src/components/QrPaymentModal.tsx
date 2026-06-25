@@ -100,20 +100,20 @@ export function QrPaymentModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative grid w-[min(1200px,95vw)] min-h-[600px] grid-cols-1 overflow-hidden rounded-[2.5rem] bg-background shadow-2xl md:grid-cols-2"
+            className="relative grid w-[min(900px,90vw)] grid-cols-1 overflow-hidden rounded-[2rem] bg-background shadow-2xl md:grid-cols-2"
           >
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="absolute right-6 top-6 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-card/90 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-card hover:text-foreground"
+              className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive shadow-sm backdrop-blur transition-all hover:bg-destructive/20 hover:scale-105 active:scale-95"
               aria-label="close"
             >
-              <X className="h-7 w-7" />
+              <X className="h-6 w-6" />
             </button>
 
             {/* ── Left panel: product info ── */}
-            <div className="flex flex-col items-center justify-center gap-8 bg-secondary/40 p-12">
-              <div className="aspect-square w-full max-w-[340px] overflow-hidden rounded-[2rem] bg-card shadow-sm">
+            <div className="flex flex-col items-center justify-center gap-6 bg-secondary/30 p-8 md:border-r border-border/50">
+              <div className="aspect-square w-full max-w-[240px] overflow-hidden rounded-[1.5rem] bg-card shadow-sm border border-border/50">
                 <img
                   src={product.imageUrl}
                   alt={product.name}
@@ -125,15 +125,15 @@ export function QrPaymentModal({
                 <div className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
                   {th.selectedItem}
                 </div>
-                <div className="mt-3 line-clamp-2 text-3xl font-bold text-foreground">
+                <div className="mt-2 line-clamp-2 text-2xl font-bold text-foreground">
                   {product.name}
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-6 flex flex-col items-center rounded-[1.5rem] bg-card p-4 shadow-sm border border-border/50">
                   <div className="text-sm font-medium text-muted-foreground">
                     {th.paymentAmount}
                   </div>
-                  <div className="mt-1 text-5xl font-extrabold text-primary">
+                  <div className="mt-1 text-4xl font-extrabold text-primary">
                     ฿{amount}
                   </div>
                 </div>
@@ -141,7 +141,7 @@ export function QrPaymentModal({
             </div>
 
             {/* ── Right panel: QR / success ── */}
-            <div className="flex flex-col items-center justify-center gap-6 p-12">
+            <div className="flex flex-col items-center justify-center gap-6 p-8">
               <AnimatePresence mode="wait">
                 {state === "waiting" && (
                   <motion.div
@@ -151,17 +151,19 @@ export function QrPaymentModal({
                     exit={{ opacity: 0, y: -10 }}
                     className="flex w-full flex-col items-center gap-4"
                   >
-                    <h2 className="text-3xl font-bold text-foreground">
-                      {th.scanPromptPay}
-                    </h2>
-                    <p className="text-base text-muted-foreground">
-                      {th.autoUpdateOnPay}
-                    </p>
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-foreground">
+                        {th.scanPromptPay}
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {th.autoUpdateOnPay}
+                      </p>
+                    </div>
 
                     {/* QR box */}
-                    <div className="mt-4 flex aspect-square w-full max-w-[360px] items-center justify-center rounded-[2rem] border bg-card p-5 shadow-sm">
+                    <div className="relative mt-2 flex aspect-square w-full max-w-[280px] items-center justify-center rounded-[1.5rem] border-2 border-primary/20 bg-white p-4 shadow-md">
                       {starting ? (
-                        <Loader2 className="h-16 w-16 animate-spin text-muted-foreground" />
+                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
                       ) : promptPayImage ? (
                         <img
                           src={promptPayImage}
@@ -169,7 +171,7 @@ export function QrPaymentModal({
                           className="h-full w-full object-contain"
                         />
                       ) : (
-                        <span className="text-base font-medium text-muted-foreground">
+                        <span className="text-sm font-medium text-muted-foreground">
                           {th.noPromptPayQr}
                         </span>
                       )}
@@ -177,21 +179,17 @@ export function QrPaymentModal({
 
                     {/* ⏱️ countdown 2 นาที */}
                     <div
-                      className={`mt-4 text-center text-lg font-medium tabular-nums transition-colors ${
+                      className={`mt-4 rounded-full px-4 py-2 text-center text-base font-semibold tabular-nums transition-colors ${
                         isUrgent
-                          ? "animate-pulse text-destructive"
-                          : "text-muted-foreground"
+                          ? "bg-destructive/10 text-destructive animate-pulse"
+                          : "bg-secondary text-secondary-foreground"
                       }`}
                     >
-                      กรุณาชำระเงินภายใน{" "}
-                      <span className="font-bold">
-                        {mm}:{ss}
-                      </span>{" "}
-                      นาที
+                      กรุณาชำระเงินภายใน {mm}:{ss} นาที
                     </div>
 
                     {(error || connectionError) && (
-                      <div className="mt-2 text-base font-semibold text-destructive">
+                      <div className="mt-2 text-center text-sm font-semibold text-destructive">
                         {error ?? connectionError}
                       </div>
                     )}
